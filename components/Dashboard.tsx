@@ -1,93 +1,44 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { useModal } from '../contexts/ModalContext';
 import { Habit, Project, JournalEntry, View } from '../types';
+import { PencilIcon, CheckIcon, DragHandleIcon } from './icons';
+import ProgressChartWidget from './dashboard-widgets/ProgressChartWidget';
+import QuickActionsWidget from './dashboard-widgets/QuickActionsWidget';
+import ToggleSwitch from './ToggleSwitch';
 
-// TODO: These forms should be created as separate components for better organization
-const AddJournalEntryForm = () => <div className="text-black dark:text-white">Add Journal Form Placeholder</div>;
-const AddTaskForm = () => <div className="text-black dark:text-white">Add Task Form Placeholder</div>;
+type WidgetComponentType = React.FC<any>;
 
-const CircularProgress: React.FC<{
-  progress: number;
-  radius: number;
-  strokeWidth: number;
-  color: string;
-  size: number;
-}> = ({ progress, radius, strokeWidth, color, size }) => {
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (progress / 100) * circumference;
-
-  return (
-    <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-      <circle
-        className="text-gray-200 dark:text-neutral-700/50"
-        strokeWidth={strokeWidth}
-        stroke="currentColor"
-        fill="transparent"
-        r={radius}
-        cx={size / 2}
-        cy={size / 2}
-      />
-      <circle
-        className={color}
-        strokeWidth={strokeWidth}
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        stroke="currentColor"
-        fill="transparent"
-        r={radius}
-        cx={size / 2}
-        cy={size / 2}
-      />
-    </g>
-  );
+const WIDGET_CONFIG = {
+  progress: { name: 'Overall Progress', component: ProgressChartWidget },
+  actions: { name: 'Quick Actions', component: QuickActionsWidget },
 };
 
-const MultiLayerProgressChart: React.FC<{ habits: Habit[]; projects: Project[]; entries: JournalEntry[] }> = ({ habits, projects, entries }) => {
-    const size = 220;
-    const strokeWidth = 18;
+type WidgetId = keyof typeof WIDGET_CONFIG;
 
-    const habitsCompleted = habits.filter(h => h.current >= h.goal).length;
-    const habitsProgress = habits.length > 0 ? (habitsCompleted / habits.length) * 100 : 0;
-    
-    const tasksCompleted = projects.flatMap(p => p.tasks).filter(t => t.completed).length;
-    const totalTasks = projects.flatMap(p => p.tasks).length;
-    const projectsProgress = totalTasks > 0 ? (tasksCompleted / totalTasks) * 100 : 0;
-    
-    const journalProgress = entries.some(e => new Date(e.date).toDateString() === new Date().toDateString()) ? 100 : 0;
+interface WidgetState {
+  id: WidgetId;
+  enabled: boolean;
+}
 
-    const totalProgress = (habitsProgress + projectsProgress + journalProgress) / 3;
-
-    return (
-        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-            <svg className="absolute inset-0" width={size} height={size}>
-                <CircularProgress progress={habitsProgress} radius={100} strokeWidth={strokeWidth} color="text-purple-500" size={size} />
-                <CircularProgress progress={projectsProgress} radius={78} strokeWidth={strokeWidth} color="text-sky-500" size={size} />
-                <CircularProgress progress={journalProgress} radius={56} strokeWidth={strokeWidth} color="text-amber-500" size={size} />
-            </svg>
-            <div className="text-center">
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Overall Progress</p>
-                <p className="text-5xl font-bold text-gray-800 dark:text-neutral-100">{Math.round(totalProgress)}%</p>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Keep it up!</p>
-            </div>
-        </div>
-    );
-};
+const DEFAULT_LAYOUT: WidgetState[] = [
+  { id: 'progress', enabled: true },
+  { id: 'actions', enabled: true },
+];
 
 interface DashboardProps {
   setActiveView: (view: View) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
-  const { openModal } = useModal();
   const [habits] = useLocalStorage<Habit[]>('habits', []);
   const [projects] = useLocalStorage<Project[]>('projects', []);
   const [entries] = useLocalStorage<JournalEntry[]>('journal_entries', []);
   
-  const habitsCompleted = habits.filter(h => h.current >= h.goal).length;
-  const tasksToday = projects.flatMap(p => p.tasks).filter(t => !t.completed).length; // Simplified
-  const journaledToday = entries.some(e => new Date(e.date).toDateString() === new Date().toDateString());
+  const [isEditing, setIsEditing] = useState(false);
+  const [layout, setLayout] = useLocalStorage<WidgetState[]>('dashboard-layout', DEFAULT_LAYOUT);
+
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -96,51 +47,110 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     return 'Good evening';
   };
 
+  const handleToggleWidget = (id: WidgetId) => {
+    setLayout(prevLayout =>
+      prevLayout.map(widget =>
+        widget.id === id ? { ...widget, enabled: !widget.enabled } : widget
+      )
+    );
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    dragItem.current = index;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => {
+      e.currentTarget.classList.add('opacity-50');
+    }, 0)
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    dragOverItem.current = index;
+  };
+  
+  const handleDrop = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    
+    const newLayout = [...layout];
+    const draggedItemContent = newLayout.splice(dragItem.current, 1)[0];
+    newLayout.splice(dragOverItem.current, 0, draggedItemContent);
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setLayout(newLayout);
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    e.currentTarget.classList.remove('opacity-50');
+  };
+
+  const widgetProps = {
+    progress: { habits, projects, entries },
+    actions: { setActiveView },
+  };
+  
+  const orderedWidgets = layout.map(widget => ({
+      ...widget,
+      ...WIDGET_CONFIG[widget.id]
+  }));
+
   return (
-    <div className="space-y-8 animate-fade-in">
-      <header>
-        <p className="text-gray-500 dark:text-gray-400">{getGreeting()}</p>
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-neutral-100">Welcome Back</h1>
+    <div className="space-y-6 animate-fade-in">
+      <header className="flex justify-between items-center h-10">
+        <div>
+          <p className="text-gray-500 dark:text-gray-400">{getGreeting()}</p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-neutral-100">Welcome Back</h1>
+        </div>
+        <button 
+          onClick={() => setIsEditing(!isEditing)} 
+          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+          aria-label={isEditing ? 'Done editing' : 'Edit dashboard layout'}
+        >
+          {isEditing ? <CheckIcon className="w-6 h-6 text-green-500"/> : <PencilIcon className="w-5 h-5 text-gray-500" />}
+        </button>
       </header>
       
-      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 flex flex-col items-center">
-        <MultiLayerProgressChart habits={habits} projects={projects} entries={entries} />
-        <div className="w-full grid grid-cols-3 gap-4 mt-6 text-center">
-            <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Habits</p>
-                <p className="font-bold text-lg text-purple-600 dark:text-purple-400">{habitsCompleted}/{habits.length}</p>
-            </div>
-            <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Tasks</p>
-                <p className="font-bold text-lg text-sky-500 dark:text-sky-400">{tasksToday} left</p>
-            </div>
-            <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Journal</p>
-                <p className={`font-bold text-lg ${journaledToday ? 'text-amber-500 dark:text-amber-400' : 'text-gray-500'}`}>{journaledToday ? 'Done' : 'Write'}</p>
-            </div>
-        </div>
-      </div>
-
       <div className="space-y-4">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => { openModal(<AddJournalEntryForm />); }} className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                <span className="text-2xl">✍️</span>
-                <p className="font-semibold">New Journal Entry</p>
-            </button>
-             <button onClick={() => setActiveView('habits')} className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                <span className="text-2xl">💧</span>
-                <p className="font-semibold">Log Water Intake</p>
-            </button>
-             <button onClick={() => setActiveView('habits')} className="bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                <span className="text-2xl">💪</span>
-                <p className="font-semibold">Complete Workout</p>
-            </button>
-             <button onClick={() => { openModal(<AddTaskForm />); }} className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                <span className="text-2xl">🚀</span>
-                <p className="font-semibold">Add New Task</p>
-            </button>
-        </div>
+        {(isEditing ? orderedWidgets : orderedWidgets.filter(w => w.enabled)).map((widget, index) => {
+          const Component = widget.component;
+          if (!Component) return null;
+          
+          if (isEditing) {
+            return (
+              <div
+                key={widget.id}
+                className="relative bg-white dark:bg-neutral-800 border-2 border-dashed border-gray-300 dark:border-neutral-700 rounded-2xl transition-opacity"
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragEnter={(e) => handleDragEnter(e, index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+              >
+                <div className="p-4 space-y-2">
+                    <div className="flex justify-between items-center text-gray-600 dark:text-neutral-300">
+                        <div className="flex items-center space-x-2">
+                           <div className="cursor-grab" aria-label={`Drag to reorder ${widget.name}`}>
+                                <DragHandleIcon className="w-5 h-5 text-gray-400 dark:text-neutral-500" />
+                            </div>
+                            <h3 className="font-semibold">{widget.name}</h3>
+                        </div>
+                        <ToggleSwitch enabled={widget.enabled} onChange={() => handleToggleWidget(widget.id)} label={`Toggle ${widget.name} widget`}/>
+                    </div>
+                     <div className={`transition-opacity ${widget.enabled ? 'opacity-100' : 'opacity-40'}`}>
+                        <Component {...widgetProps[widget.id]} />
+                    </div>
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <div key={widget.id}>
+              <Component {...widgetProps[widget.id]} />
+            </div>
+          )
+        })}
       </div>
     </div>
   );

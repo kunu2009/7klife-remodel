@@ -8,6 +8,7 @@ const AddJournalEntryForm: React.FC<{ onAdd: (entry: Omit<JournalEntry, 'id'>) =
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [mood, setMood] = useState('😊');
+    const moodOptions = ['😊', '😄', '🤔', '😢', '😠'];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,7 +25,23 @@ const AddJournalEntryForm: React.FC<{ onAdd: (entry: Omit<JournalEntry, 'id'>) =
                 <textarea placeholder="Write something..." value={content} onChange={e => setContent(e.target.value)} className="w-full h-32 px-3 py-2 bg-transparent focus:outline-none" required />
             </div>
             <div className="flex justify-between items-center">
-                 <input type="text" placeholder="Mood Emoji" value={mood} onChange={e => setMood(e.target.value)} className="w-16 text-2xl text-center bg-gray-100 dark:bg-neutral-700 rounded-md focus:outline-none"/>
+                 <div className="flex items-center space-x-2" role="group" aria-label="Mood selection">
+                    {moodOptions.map((option) => (
+                        <button
+                            key={option}
+                            type="button"
+                            onClick={() => setMood(option)}
+                            aria-label={`Select mood: ${option}`}
+                            className={`text-3xl p-2 rounded-full transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-800 ${
+                                mood === option 
+                                ? 'bg-indigo-100 dark:bg-indigo-900/50 scale-110 ring-2 ring-indigo-300 dark:ring-indigo-500' 
+                                : 'hover:bg-gray-100 dark:hover:bg-neutral-700 hover:scale-105 ring-2 ring-transparent'
+                            }`}
+                        >
+                            {option}
+                        </button>
+                    ))}
+                </div>
                 <button type="submit" className="bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700 transition-colors">Save</button>
             </div>
         </form>
