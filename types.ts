@@ -1,8 +1,7 @@
-
 export type View = 'dashboard' | 'habits' | 'journal' | 'projects' | 'more';
 
 export interface Habit {
-  id: number;
+  id: string;
   name: string;
   icon: string;
   goal: number;
@@ -10,14 +9,14 @@ export interface Habit {
   unit: string;
   color: string;
   streak: number;
-  history: boolean[]; // last 7 days
+  history: boolean[]; // last 7 days, could be expanded
 }
 
 export interface JournalEntry {
-  id: number;
-  date: Date;
+  id: string;
+  date: string; // Storing as ISO string
   title: string;
-  excerpt: string;
+  content: string;
   mood: string;
 }
 
@@ -27,19 +26,24 @@ export enum ProjectStatus {
   Completed = 'Completed'
 }
 
+export interface ProjectTask {
+    id: string;
+    name: string;
+    completed: boolean;
+}
+
 export interface Project {
-  id: number;
+  id:string;
   name: string;
   status: ProjectStatus;
-  progress: number;
-  tasks: { name: string; completed: boolean }[];
+  tasks: ProjectTask[];
 }
 
 export interface Subscription {
-  id: number;
+  id: string;
   name: string;
   iconUrl: string;
   amount: number;
   billingCycle: 'monthly' | 'yearly';
-  nextBilling: Date;
+  nextBilling: string; // Storing as ISO string
 }
