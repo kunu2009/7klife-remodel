@@ -4,26 +4,63 @@ import { Habit } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
+const HABIT_COLORS = ['purple', 'blue', 'green', 'rose', 'orange'];
+const COLOR_CLASSES: { [key: string]: string } = {
+    purple: 'bg-purple-500',
+    blue: 'bg-sky-500',
+    green: 'bg-emerald-500',
+    rose: 'bg-rose-500',
+    orange: 'bg-orange-500',
+};
+
 // This form can be extracted into its own file if it becomes more complex.
 const AddHabitForm: React.FC<{ onAdd: (habit: Omit<Habit, 'id' | 'streak' | 'history' | 'current'>) => void }> = ({ onAdd }) => {
-    // Basic form logic, can be expanded with more fields
     const [name, setName] = React.useState('');
-    const [icon, setIcon] = React.useState('🎯');
+    const [icon, setIcon] = React.useState('🎯'); // Can be expanded with an icon picker
     const [goal, setGoal] = React.useState(1);
+    const [unit, setUnit] = React.useState('times');
+    const [color, setColor] = React.useState('purple');
     
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onAdd({ name, icon, goal, unit: 'times', color: 'purple' });
+        onAdd({ name, icon, goal, unit, color });
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h2 className="text-xl font-bold text-gray-800 dark:text-white">Add New Habit</h2>
+            
             <div>
                 <label htmlFor="habit-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                 <input type="text" id="habit-name" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
             </div>
-            {/* Add more form fields for icon, goal, unit, color etc. */}
+
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="habit-goal" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Goal</label>
+                    <input type="number" id="habit-goal" min="1" value={goal} onChange={e => setGoal(Number(e.target.value))} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
+                </div>
+                <div>
+                    <label htmlFor="habit-unit" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Unit</label>
+                    <input type="text" id="habit-unit" value={unit} onChange={e => setUnit(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
+                </div>
+            </div>
+
+             <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
+                <div className="mt-2 flex space-x-3">
+                    {HABIT_COLORS.map(c => (
+                        <button
+                            key={c}
+                            type="button"
+                            onClick={() => setColor(c)}
+                            className={`w-8 h-8 rounded-full transition-transform duration-150 ${COLOR_CLASSES[c]} ${color === c ? 'ring-2 ring-offset-2 dark:ring-offset-neutral-800 ring-indigo-500 scale-110' : 'hover:scale-110'}`}
+                            aria-label={`Select color ${c}`}
+                        />
+                    ))}
+                </div>
+            </div>
+
             <button type="submit" className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Add Habit</button>
         </form>
     );

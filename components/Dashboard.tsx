@@ -112,8 +112,21 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
       
       <div className="space-y-4">
         {(isEditing ? orderedWidgets : orderedWidgets.filter(w => w.enabled)).map((widget, index) => {
-          const Component = widget.component;
-          if (!Component) return null;
+          // FIX: Use a switch on the discriminated union `widget.id` to ensure type-safe props are passed to each component.
+          const widgetContent = (() => {
+            if (!widget.component) return null;
+            // FIX: Replaced dynamic widget.component with explicit components to ensure type-safe prop passing.
+            switch (widget.id) {
+              case 'progress':
+                return <ProgressChartWidget {...widgetProps.progress} />;
+              case 'actions':
+                return <QuickActionsWidget {...widgetProps.actions} />;
+              default:
+                return null;
+            }
+          })();
+
+          if (!widgetContent) return null;
           
           if (isEditing) {
             return (
@@ -138,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
                         <ToggleSwitch enabled={widget.enabled} onChange={() => handleToggleWidget(widget.id)} label={`Toggle ${widget.name} widget`}/>
                     </div>
                      <div className={`transition-opacity ${widget.enabled ? 'opacity-100' : 'opacity-40'}`}>
-                        <Component {...widgetProps[widget.id]} />
+                        {widgetContent}
                     </div>
                 </div>
               </div>
@@ -147,7 +160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
 
           return (
             <div key={widget.id}>
-              <Component {...widgetProps[widget.id]} />
+              {widgetContent}
             </div>
           )
         })}
