@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'habits' | 'journal' | 'projects' | 'more';
+export type View = 'dashboard' | 'habits' | 'journal' | 'projects' | 'more' | 'inventory' | 'goals';
 
 export interface Habit {
   id: string;
@@ -46,4 +46,26 @@ export interface Subscription {
   amount: number;
   billingCycle: 'monthly' | 'yearly';
   nextBilling: string; // Storing as ISO string
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  notes?: string;
+}
+
+export interface GoalMilestone {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  targetDate: string;
+  milestones: GoalMilestone[];
 }

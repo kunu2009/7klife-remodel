@@ -6,6 +6,8 @@ import Journal from './components/Journal';
 import Projects from './components/Projects';
 import More from './components/More';
 import Modal from './components/Modal';
+import Inventory from './components/Inventory';
+import Goals from './components/Goals';
 import { View } from './types';
 
 const App: React.FC = () => {
@@ -22,7 +24,11 @@ const App: React.FC = () => {
       case 'projects':
         return <Projects />;
       case 'more':
-        return <More />;
+        return <More setActiveView={setActiveView} />;
+      case 'inventory':
+        return <Inventory />;
+      case 'goals':
+        return <Goals />;
       default:
         return <Dashboard setActiveView={setActiveView}/>;
     }
@@ -30,7 +36,7 @@ const App: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-white dark:bg-neutral-900 shadow-lg flex flex-col font-sans">
-      <main className="flex-1 pb-24 p-4 text-gray-800 dark:text-neutral-200">
+      <main className="flex-1 pb-24 p-4 text-gray-800 dark:text-neutral-200 bg-gradient-to-b from-white to-neutral-50 dark:from-neutral-900 dark:to-black">
         {renderView()}
       </main>
       <BottomNav activeView={activeView} setActiveView={setActiveView} />

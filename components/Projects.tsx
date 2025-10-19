@@ -4,24 +4,6 @@ import { PlusIcon } from './icons';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
-const initialProjects: Project[] = [
-  { 
-    id: '1', name: 'App Redesign', status: ProjectStatus.InProgress,
-    tasks: [
-      { id: 't1', name: 'Wireframing', completed: true },
-      { id: 't2', name: 'UI Mockups', completed: true },
-      { id: 't3', name: 'Prototype', completed: false },
-    ]
-  },
-  { 
-    id: '2', name: 'Q3 Marketing Plan', status: ProjectStatus.Completed,
-    tasks: [
-      { id: 't4', name: 'Research', completed: true },
-      { id: 't5', name: 'Strategy', completed: true },
-    ]
-  },
-];
-
 const AddProjectForm: React.FC<{ onAdd: (project: Omit<Project, 'id' | 'status' | 'tasks'>) => void }> = ({ onAdd }) => {
     const [name, setName] = React.useState('');
     const handleSubmit = (e: React.FormEvent) => {
@@ -86,7 +68,7 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
 }
 
 const Projects: React.FC = () => {
-  const [projects, setProjects] = useLocalStorage<Project[]>('projects', initialProjects);
+  const [projects, setProjects] = useLocalStorage<Project[]>('projects', []);
   const { openModal, closeModal } = useModal();
 
   const handleAddProject = (newProjectData: { name: string }) => {
@@ -113,9 +95,15 @@ const Projects: React.FC = () => {
             </button>
         </div>
         <div className="space-y-4">
-            {projects.map(project => (
-                <ProjectCard key={project.id} project={project} onUpdate={handleUpdateProject} />
-            ))}
+            {projects.length > 0 ? (
+                projects.map(project => (
+                    <ProjectCard key={project.id} project={project} onUpdate={handleUpdateProject} />
+                ))
+            ) : (
+                <div className="text-center py-12">
+                    <p className="text-gray-500 dark:text-gray-400">No projects yet.</p>
+                </div>
+            )}
         </div>
     </div>
   );

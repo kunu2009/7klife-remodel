@@ -4,11 +4,6 @@ import { JournalEntry } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
-const initialEntries: JournalEntry[] = [
-    { id: '1', date: new Date(2024, 6, 27).toISOString(), title: 'A funny conversation', content: 'Mark was somehow trying to convince me that monkeys were taking over the world and that we needed to start a banana selling business.', mood: '😂' },
-    { id: '2', date: new Date(2024, 6, 24).toISOString(), title: 'Tattoo idea for the weekend', content: 'I was thinking of getting a small minimalist wave on my wrist. It represents my love for the ocean and the constant flow of life. It should be simple and elegant.', mood: '🤔' },
-];
-
 const AddJournalEntryForm: React.FC<{ onAdd: (entry: Omit<JournalEntry, 'id'>) => void }> = ({ onAdd }) => {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
@@ -73,9 +68,7 @@ const Calendar: React.FC<{ entries: JournalEntry[], onDateClick: (date: number) 
 };
 
 const Journal: React.FC = () => {
-    const [entries, setEntries] = useLocalStorage<JournalEntry[]>('journal_entries', initialEntries);
-    // FIX: Correctly destructure useState to get both the state and the setter function.
-    // The original code `const [setSelectedDate] = ...` incorrectly assigned the state value (a number) to `setSelectedDate`.
+    const [entries, setEntries] = useLocalStorage<JournalEntry[]>('journal_entries', []);
     const [selectedDate, setSelectedDate] = useState<number | null>(new Date().getDate());
     const { openModal, closeModal } = useModal();
 
@@ -100,21 +93,27 @@ const Journal: React.FC = () => {
             <div>
                 <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-3">Latest Entries</h2>
                 <div className="space-y-3">
-                    {entries.map(entry => {
-                        const entryDate = new Date(entry.date);
-                        return (
-                        <div key={entry.id} className="bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm flex items-start space-x-4">
-                            <div className="text-center">
-                               <div className="font-bold text-indigo-600 dark:text-indigo-400 text-xl">{entryDate.getDate()}</div>
-                               <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">{entryDate.toLocaleString('default', { month: 'short' })}</div>
+                    {entries.length > 0 ? (
+                        entries.map(entry => {
+                            const entryDate = new Date(entry.date);
+                            return (
+                            <div key={entry.id} className="bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm flex items-start space-x-4">
+                                <div className="text-center">
+                                   <div className="font-bold text-indigo-600 dark:text-indigo-400 text-xl">{entryDate.getDate()}</div>
+                                   <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">{entryDate.toLocaleString('default', { month: 'short' })}</div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-gray-800 dark:text-neutral-100 break-words">{entry.title}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 break-words line-clamp-2">{entry.content}</p>
+                                </div>
+                                <div className="text-xl">{entry.mood}</div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-800 dark:text-neutral-100 break-words">{entry.title}</p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 break-words line-clamp-2">{entry.content}</p>
-                            </div>
-                            <div className="text-xl">{entry.mood}</div>
+                        )})
+                    ) : (
+                        <div className="text-center py-12">
+                            <p className="text-gray-500 dark:text-gray-400">No journal entries yet.</p>
                         </div>
-                    )})}
+                    )}
                 </div>
             </div>
         </div>

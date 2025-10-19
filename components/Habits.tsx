@@ -4,11 +4,6 @@ import { Habit } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
-const initialHabits: Habit[] = [
-    { id: '1', name: 'Drink water', icon: '💧', streak: 119, color: 'blue', history: [true, true, true, true, true, true, true], goal: 8, current: 5, unit: 'glasses' },
-    { id: '2', name: 'Meditating', icon: '🧘', streak: 28, color: 'rose', history: [true, false, true, true, true, true, true], goal: 10, current: 10, unit: 'mins' },
-];
-
 // This form can be extracted into its own file if it becomes more complex.
 const AddHabitForm: React.FC<{ onAdd: (habit: Omit<Habit, 'id' | 'streak' | 'history' | 'current'>) => void }> = ({ onAdd }) => {
     // Basic form logic, can be expanded with more fields
@@ -67,7 +62,7 @@ const HabitItem: React.FC<{ habit: Habit, onUpdate: (habit: Habit) => void }> = 
 }
 
 const Habits: React.FC = () => {
-    const [habits, setHabits] = useLocalStorage<Habit[]>('habits', initialHabits);
+    const [habits, setHabits] = useLocalStorage<Habit[]>('habits', []);
     const { openModal, closeModal } = useModal();
 
     const handleAddHabit = (newHabitData: Omit<Habit, 'id' | 'streak' | 'history' | 'current'>) => {
@@ -86,8 +81,6 @@ const Habits: React.FC = () => {
         setHabits(prev => prev.map(h => h.id === updatedHabit.id ? updatedHabit : h));
     };
 
-    const weekDays = ['Fr', 'Sa', 'Su', 'Mo', 'Tu', 'We', 'Th'];
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -98,7 +91,14 @@ const Habits: React.FC = () => {
             </div>
             
              <div className="space-y-3">
-                {habits.map(habit => <HabitItem key={habit.id} habit={habit} onUpdate={handleUpdateHabit} />)}
+                {habits.length > 0 ? (
+                    habits.map(habit => <HabitItem key={habit.id} habit={habit} onUpdate={handleUpdateHabit} />)
+                ) : (
+                    <div className="text-center py-12">
+                        <p className="text-gray-500 dark:text-gray-400">No habits yet.</p>
+                        <p className="text-gray-500 dark:text-gray-400">Click the '+' to add your first one!</p>
+                    </div>
+                )}
             </div>
         </div>
     );
