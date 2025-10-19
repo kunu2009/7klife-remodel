@@ -1,6 +1,6 @@
 import React from 'react';
 import { Project, ProjectStatus, ProjectTask, Recurrence } from '../types';
-import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon, RepeatIcon } from './icons';
+import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon, RepeatIcon, SortIcon, ChevronDownIcon } from './icons';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
@@ -162,25 +162,45 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
     const { openModal, closeModal } = useModal();
     const [newTaskName, setNewTaskName] = React.useState('');
     const [sortBy, setSortBy] = React.useState('default');
+    const [isSortMenuOpen, setIsSortMenuOpen] = React.useState(false);
+    const sortMenuRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
+                setIsSortMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [sortMenuRef]);
+
+    const sortLabels = {
+        default: 'Default',
+        dueDate: 'Due Date',
+        status: 'Status'
+    };
+    const sortOptions = Object.keys(sortLabels) as (keyof typeof sortLabels)[];
 
     const sortedTasks = React.useMemo(() => {
         const tasksToSort = [...project.tasks];
 
         if (sortBy === 'dueDate') {
             return tasksToSort.sort((a, b) => {
-                if (a.dueDate && b.dueDate) {
-                    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-                }
-                return a.dueDate ? -1 : 1; // Tasks with due dates come first
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
             });
         }
         if (sortBy === 'status') {
             return tasksToSort.sort((a, b) => {
                 if (a.completed === b.completed) return 0;
-                return a.completed ? 1 : -1; // Incomplete tasks come first
+                return a.completed ? 1 : -1;
             });
         }
-        return project.tasks; // Default order
+        return project.tasks;
     }, [project.tasks, sortBy]);
 
     const handleToggleTask = (taskId: string) => {
@@ -189,9 +209,8 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
 
         let updatedTasks;
 
-        // If it's a recurring task, reschedule it instead of completing it
         if (task.recurrence && task.dueDate && !task.completed) {
-            const currentDate = new Date(task.dueDate + 'T00:00:00'); // Use T00 to avoid timezone issues
+            const currentDate = new Date(task.dueDate + 'T00:00:00');
             switch (task.recurrence.frequency) {
                 case 'daily': currentDate.setDate(currentDate.getDate() + 1); break;
                 case 'weekly': currentDate.setDate(currentDate.getDate() + 7); break;
@@ -204,7 +223,6 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                 t.id === taskId ? { ...t, dueDate: nextDueDate } : t
             );
         } else {
-             // Standard task completion
             updatedTasks = project.tasks.map(t => 
                 t.id === taskId ? { ...t, completed: !t.completed } : t
             );
@@ -228,7 +246,6 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
             completed: false,
         };
         const updatedTasks = [...project.tasks, newTask];
-
         const anyStarted = updatedTasks.some(t => t.completed);
         const newStatus = anyStarted && project.status === ProjectStatus.NotStarted
             ? ProjectStatus.InProgress
@@ -239,7 +256,7 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
     };
     
     const handleMarkProjectCompleted = () => {
-        const allTasksCompleted = project.tasks.map(task => ({ ...task, completed: true, recurrence: undefined })); // Clear recurrence on project completion
+        const allTasksCompleted = project.tasks.map(task => ({ ...task, completed: true, recurrence: undefined }));
         onUpdate({
             ...project,
             tasks: allTasksCompleted,
@@ -250,7 +267,6 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
     const handleOpenEditModal = (task: ProjectTask) => {
         const performDelete = () => {
             const updatedTasks = project.tasks.filter(t => t.id !== task.id);
-            
             const allCompleted = updatedTasks.every(t => t.completed);
             const anyStarted = updatedTasks.some(t => t.completed);
             
@@ -324,16 +340,35 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
             </div>
             {project.tasks.length > 1 && (
                 <div className="flex justify-end mb-3 -mt-2">
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="text-sm bg-gray-50 dark:bg-neutral-700/50 border-gray-200 dark:border-neutral-700 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-gray-600 dark:text-neutral-300"
-                        aria-label="Sort tasks by"
-                    >
-                        <option value="default">Default</option>
-                        <option value="dueDate">Due Date</option>
-                        <option value="status">Status</option>
-                    </select>
+                    <div className="relative" ref={sortMenuRef}>
+                        <button 
+                            onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                            className="flex items-center space-x-2 text-sm bg-gray-50 dark:bg-neutral-700/50 border border-gray-200 dark:border-neutral-700 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-neutral-800 focus:ring-indigo-500 text-gray-600 dark:text-neutral-300"
+                            aria-haspopup="true"
+                            aria-expanded={isSortMenuOpen}
+                        >
+                            <SortIcon className="w-4 h-4" />
+                            <span className="capitalize">{sortLabels[sortBy as keyof typeof sortLabels]}</span>
+                            <ChevronDownIcon className={`w-4 h-4 transition-transform ${isSortMenuOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {isSortMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-neutral-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10 animate-fade-in-sm">
+                                <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                    {sortOptions.map(option => (
+                                        <button
+                                            key={option}
+                                            onClick={() => { setSortBy(option); setIsSortMenuOpen(false); }}
+                                            className={`w-full text-left flex justify-between items-center px-4 py-2 text-sm ${sortBy === option ? 'font-semibold text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-neutral-200'} hover:bg-gray-100 dark:hover:bg-neutral-700`}
+                                            role="menuitem"
+                                        >
+                                            {sortLabels[option]}
+                                            {sortBy === option && <CheckCircleIcon className="w-5 h-5" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
             <div className="space-y-3">
