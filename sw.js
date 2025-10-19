@@ -1,10 +1,9 @@
-const CACHE_NAME = '7k-life-cache-v2';
+const CACHE_NAME = '7k-life-cache-v3';
 const urlsToCache = [
   '/',
   '/index.html',
   '/index.tsx',
   '/manifest.json',
-  '/logo.jpg',
   'https://cdn.tailwindcss.com'
 ];
 

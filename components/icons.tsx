@@ -125,3 +125,18 @@ export const CreditCardIcon: React.FC<IconProps> = ({ className }) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
     </svg>
 );
+
+export const LogoIcon: React.FC<IconProps> = ({ className }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="7k Life Logo">
+    <circle cx="50" cy="50" r="50" fill="url(#gradient)" />
+    <text x="50" y="62" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontSize="48" fontWeight="bold" fill="white">
+        7k
+    </text>
+    <defs>
+        <linearGradient id="gradient" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#6366F1"/>
+            <stop offset="1" stopColor="#818CF8"/>
+        </linearGradient>
+    </defs>
+  </svg>
+);

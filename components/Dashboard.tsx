@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { View } from '../types';
-import { PencilIcon, CheckIcon, DragHandleIcon } from './icons';
+import { PencilIcon, CheckIcon, DragHandleIcon, LogoIcon } from './icons';
 import ProgressChartWidget from './dashboard-widgets/ProgressChartWidget';
 import QuoteWidget from './dashboard-widgets/QuickActionsWidget';
 import { TodaysHabitsWidget, JournalPromptWidget, FocusTasksWidget, SubscriptionsWidget, GoalsWidget } from './dashboard-widgets/AdditionalWidgets';
@@ -129,7 +129,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     <div className="space-y-6 animate-fade-in">
       <header className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
-            <img src="/logo.jpg" alt="7k Life Logo" className="w-12 h-12 rounded-full object-cover" />
+            <LogoIcon className="w-12 h-12" />
             <div>
                 <p className="text-gray-500 dark:text-gray-400">{getGreeting()}</p>
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-neutral-100">Home</h1>

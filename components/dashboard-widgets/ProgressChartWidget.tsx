@@ -1,5 +1,6 @@
 import React from 'react';
 import { useHabits, useProjects, useJournal } from '../../hooks/useDataHooks';
+import { LogoIcon } from '../icons';
 
 const CircularProgress: React.FC<{
   progress: number;
@@ -83,7 +84,7 @@ const ProgressChartWidget: React.FC = () => {
   if (isAppEmpty) {
     return (
       <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 flex flex-col items-center justify-center text-center border border-black/5 dark:border-white/5 min-h-[300px]">
-        <img src="/logo.jpg" alt="7k Life Logo" className="w-16 h-16 rounded-full object-cover opacity-70 mb-4" />
+        <LogoIcon className="w-16 h-16 opacity-70 mb-4" />
         <h3 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Welcome!</h3>
         <p className="text-gray-500 dark:text-neutral-400 mt-2 max-w-xs">
           This is your progress hub. Add habits and projects to start tracking your journey.
