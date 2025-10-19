@@ -1,6 +1,6 @@
 import React from 'react';
 import { Project, ProjectStatus, ProjectTask, Recurrence } from '../types';
-import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon, RepeatIcon, SortIcon, ChevronDownIcon } from './icons';
+import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon, RepeatIcon, SortIcon, ChevronDownIcon, CheckIcon } from './icons';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
@@ -78,6 +78,7 @@ const EditTaskForm: React.FC<{ task: ProjectTask; onSave: (task: ProjectTask) =>
     const [description, setDescription] = React.useState(task.description || '');
     const [dueDate, setDueDate] = React.useState(task.dueDate ? task.dueDate.split('T')[0] : '');
     const [recurrence, setRecurrence] = React.useState(task.recurrence?.frequency || 'none');
+    const [confirmingDelete, setConfirmingDelete] = React.useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -95,6 +96,29 @@ const EditTaskForm: React.FC<{ task: ProjectTask; onSave: (task: ProjectTask) =>
             recurrence: newRecurrence,
         });
     };
+
+    if (confirmingDelete) {
+        return (
+            <div className="space-y-4 text-center p-2">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white" id="modal-title">Confirm Deletion</h2>
+                <p className="text-gray-600 dark:text-neutral-300">Are you sure you want to delete this task? This action cannot be undone.</p>
+                <div className="flex justify-center space-x-4 pt-2">
+                    <button 
+                        onClick={() => setConfirmingDelete(false)}
+                        className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={onDelete} 
+                        className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -132,7 +156,7 @@ const EditTaskForm: React.FC<{ task: ProjectTask; onSave: (task: ProjectTask) =>
             <div className="flex justify-between items-center pt-2">
                 <button
                     type="button"
-                    onClick={onDelete}
+                    onClick={() => setConfirmingDelete(true)}
                     className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/50 rounded-md hover:bg-red-200 dark:hover:bg-red-900"
                     aria-label="Delete task"
                 >
@@ -219,23 +243,38 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
             }
             const nextDueDate = currentDate.toISOString().split('T')[0];
             
+            // For recurring tasks, we don't mark them as "completed". Instead, we just update the due date.
+            // But for the sake of progress, let's treat it as a "completion" for status update.
+            const tempCompletedTasks = project.tasks.map(t => t.id === taskId ? { ...t, completed: true } : t);
+            
             updatedTasks = project.tasks.map(t => 
                 t.id === taskId ? { ...t, dueDate: nextDueDate } : t
             );
+
+            // Calculate status based on temporary completion
+            const allTempCompleted = tempCompletedTasks.every(t => t.completed);
+            const anyTempStarted = tempCompletedTasks.some(t => t.completed);
+
+            let newStatus = ProjectStatus.NotStarted;
+            if (allTempCompleted) newStatus = ProjectStatus.Completed;
+            else if (anyTempStarted) newStatus = ProjectStatus.InProgress;
+
+            onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
+            
         } else {
             updatedTasks = project.tasks.map(t => 
                 t.id === taskId ? { ...t, completed: !t.completed } : t
             );
+            
+            const allCompleted = updatedTasks.every(t => t.completed);
+            const anyStarted = updatedTasks.some(t => t.completed);
+            
+            let newStatus = ProjectStatus.NotStarted;
+            if (allCompleted && updatedTasks.length > 0) newStatus = ProjectStatus.Completed;
+            else if (anyStarted) newStatus = ProjectStatus.InProgress;
+
+            onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
         }
-
-        const allCompleted = updatedTasks.every(t => t.completed);
-        const anyStarted = updatedTasks.some(t => t.completed);
-        
-        let newStatus = ProjectStatus.NotStarted;
-        if (allCompleted && updatedTasks.length > 0) newStatus = ProjectStatus.Completed;
-        else if (anyStarted) newStatus = ProjectStatus.InProgress;
-
-        onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
     };
 
     const handleAddTask = () => {
@@ -249,7 +288,7 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
         const anyStarted = updatedTasks.some(t => t.completed);
         const newStatus = anyStarted && project.status === ProjectStatus.NotStarted
             ? ProjectStatus.InProgress
-            : project.status;
+            : project.status === ProjectStatus.Completed ? ProjectStatus.InProgress : project.status;
 
         onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
         setNewTaskName('');
@@ -279,47 +318,18 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
             closeModal();
         };
 
-        const EditTaskWithConfirmation: React.FC = () => {
-            const [view, setView] = React.useState<'editing' | 'confirming'>('editing');
-
-            if (view === 'confirming') {
-                return (
-                    <div className="space-y-4 text-center p-2">
-                        <h2 className="text-xl font-bold text-gray-800 dark:text-white" id="modal-title">Confirm Deletion</h2>
-                        <p className="text-gray-600 dark:text-neutral-300">Are you sure you want to delete this task? This action cannot be undone.</p>
-                        <div className="flex justify-center space-x-4 pt-2">
-                            <button 
-                                onClick={() => setView('editing')}
-                                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={performDelete} 
-                                className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
-    
-            return (
-                <EditTaskForm
-                    task={task}
-                    onSave={(updatedTask) => {
-                        const updatedTasks = project.tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
-                        onUpdate({ ...project, tasks: updatedTasks });
-                        closeModal();
-                    }}
-                    onDelete={() => setView('confirming')}
-                    onClose={closeModal}
-                />
-            );
-        };
-
-        openModal(<EditTaskWithConfirmation />);
+        openModal(
+            <EditTaskForm
+                task={task}
+                onSave={(updatedTask) => {
+                    const updatedTasks = project.tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+                    onUpdate({ ...project, tasks: updatedTasks });
+                    closeModal();
+                }}
+                onDelete={performDelete}
+                onClose={closeModal}
+            />
+        );
     };
 
     const handleDeleteProject = () => {
@@ -426,28 +436,27 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                         return (
                             <div key={task.id} className="flex items-center group">
                                 <div className="flex flex-col items-center mr-4">
-                                    <button aria-label={`Toggle task ${task.name}`} onClick={() => handleToggleTask(task.id)} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-neutral-600'}`}>
-                                        {task.completed && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                    <button aria-label={`Toggle task ${task.name}`} onClick={() => handleToggleTask(task.id)} className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${task.completed ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-neutral-600 hover:border-indigo-500'}`}>
+                                        {task.completed && <CheckIcon className="w-4 h-4 text-white" />}
                                     </button>
                                     {index < sortedTasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600 mt-1"></div>}
                                 </div>
-                                <div className="flex-1">
-                                    <p className={`transition-all duration-300 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>
+                                <div className="flex-1 min-w-0">
+                                    <p className={`transition-all duration-300 break-words ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>
                                         {task.name}
                                     </p>
-                                    {task.dueDate && (
-                                        <div className="flex items-center space-x-2">
-                                            {task.recurrence && <RepeatIcon className="w-3 h-3 text-gray-400 dark:text-neutral-500" />}
-                                            <p className={`text-xs mt-0.5 ${isOverdue ? 'font-semibold text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-neutral-500'}`}>
+                                    {!task.completed && task.dueDate && (
+                                        <div className="flex items-center space-x-2 mt-1">
+                                            {task.recurrence && <RepeatIcon className="w-3.5 h-3.5 text-gray-400 dark:text-neutral-500" />}
+                                            <p className={`text-xs font-medium ${isOverdue ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-neutral-400'}`}>
                                                 Due: {new Date(task.dueDate).toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric' })}
-                                                {isOverdue && ' (Overdue)'}
                                             </p>
                                         </div>
                                     )}
                                 </div>
                                 <button
                                     onClick={() => handleOpenEditModal(task)}
-                                    className="ml-2 text-gray-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="ml-2 text-gray-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                                     aria-label={`Edit details for ${task.name}`}
                                 >
                                     <PencilIcon className="w-4 h-4" />
