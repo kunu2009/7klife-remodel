@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { View } from '../types';
 import { PencilIcon, CheckIcon, DragHandleIcon } from './icons';
@@ -41,6 +41,37 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [layout, setLayout] = useLocalStorage<WidgetState[]>('dashboard-layout', DEFAULT_LAYOUT);
+
+  // Synchronize the layout with default widgets on mount.
+  // This ensures new widgets are available to users with existing layouts.
+  useEffect(() => {
+    const defaultWidgetIds = new Set(DEFAULT_LAYOUT.map(w => w.id));
+    const layoutWidgetIds = new Set(layout.map(w => w.id));
+
+    // Only update if there's a mismatch
+    if (defaultWidgetIds.size !== layoutWidgetIds.size || !Array.from(defaultWidgetIds).every(id => layoutWidgetIds.has(id))) {
+        const finalLayout: WidgetState[] = [];
+        const presentIds = new Set<WidgetId>();
+
+        // 1. Add widgets from user's layout that are still valid, preserving order and enabled state.
+        for (const widget of layout) {
+            if (defaultWidgetIds.has(widget.id)) {
+                finalLayout.push(widget);
+                presentIds.add(widget.id);
+            }
+        }
+
+        // 2. Add any new default widgets that were not in the user's layout.
+        for (const defaultWidget of DEFAULT_LAYOUT) {
+            if (!presentIds.has(defaultWidget.id)) {
+                finalLayout.push(defaultWidget);
+            }
+        }
+      
+        setLayout(finalLayout);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
