@@ -16,11 +16,13 @@ const COLOR_CLASSES: { [key: string]: string } = {
 // This form can be extracted into its own file if it becomes more complex.
 const AddHabitForm: React.FC<{ onAdd: (habit: Omit<Habit, 'id' | 'streak' | 'history' | 'current'>) => void }> = ({ onAdd }) => {
     const [name, setName] = React.useState('');
-    const [icon, setIcon] = React.useState('🎯'); // Can be expanded with an icon picker
+    const [icon, setIcon] = React.useState('🎯');
     const [goal, setGoal] = React.useState(1);
     const [unit, setUnit] = React.useState('times');
     const [color, setColor] = React.useState('purple');
     
+    const PRESET_ICONS = ['🎯', '💧', '💪', '🧘', '📖', '🏃‍♂️', '🥗', '🎨', '💻', '💰', '🧹', '🛌'];
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onAdd({ name, icon, goal, unit, color });
@@ -34,6 +36,37 @@ const AddHabitForm: React.FC<{ onAdd: (habit: Omit<Habit, 'id' | 'streak' | 'his
                 <label htmlFor="habit-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                 <input type="text" id="habit-name" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required />
             </div>
+
+            <div>
+                <label htmlFor="habit-icon" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Icon</label>
+                <input
+                    type="text"
+                    id="habit-icon"
+                    value={icon}
+                    onChange={e => setIcon(e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Enter an emoji"
+                    maxLength={2} // Emojis can sometimes be 2 characters
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                    {PRESET_ICONS.map(presetIcon => (
+                        <button
+                            key={presetIcon}
+                            type="button"
+                            onClick={() => setIcon(presetIcon)}
+                            className={`w-10 h-10 flex items-center justify-center text-xl rounded-lg transition-all duration-150 ${
+                                icon === presetIcon
+                                ? 'bg-indigo-100 dark:bg-indigo-900 ring-2 ring-indigo-500'
+                                : 'bg-gray-100 dark:bg-neutral-700 hover:scale-110'
+                            }`}
+                            aria-label={`Select icon ${presetIcon}`}
+                        >
+                            {presetIcon}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
