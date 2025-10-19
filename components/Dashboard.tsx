@@ -96,10 +96,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex justify-between items-center h-10">
-        <div>
-          <p className="text-gray-500 dark:text-gray-400">{getGreeting()}</p>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-neutral-100">Welcome Back</h1>
+      <header className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+            <img src="/logo.jpg" alt="7k Life Logo" className="w-12 h-12 rounded-full object-cover" />
+            <div>
+                <p className="text-gray-500 dark:text-gray-400">{getGreeting()}</p>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-neutral-100">7k Life</h1>
+            </div>
         </div>
         <button 
           onClick={() => setIsEditing(!isEditing)} 

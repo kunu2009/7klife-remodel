@@ -1,0 +1,21 @@
+{
+  "short_name": "7k Life",
+  "name": "7k Life - Daily Log Tracker",
+  "description": "A beautiful and productive PWA to track your daily logs, inventory, habits, journals, projects, subscriptions, and more. Organize your life and achieve your goals with 7k Life.",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#f9fafb"
+}
