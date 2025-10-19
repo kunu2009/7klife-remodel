@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlameIcon, PlusIcon } from './icons';
+import { FlameIcon, PlusIcon, CheckIcon } from './icons';
 import { Habit } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
@@ -101,44 +101,62 @@ const AddHabitForm: React.FC<{ onAdd: (habit: Omit<Habit, 'id' | 'streak' | 'his
 
 const HabitItem: React.FC<{ habit: Habit, onIncrement: (id: string) => void }> = ({ habit, onIncrement }) => {
     const colorVariants = {
-        purple: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500' },
-        blue: { bg: 'bg-sky-100 dark:bg-sky-900/50', text: 'text-sky-700 dark:text-sky-300', dot: 'bg-sky-500' },
-        green: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
-        rose: { bg: 'bg-rose-100 dark:bg-rose-900/50', text: 'text-rose-700 dark:text-rose-300', dot: 'bg-rose-500' },
-        orange: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
+        purple: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500', ring: 'ring-purple-500' },
+        blue: { bg: 'bg-sky-100 dark:bg-sky-900/50', text: 'text-sky-700 dark:text-sky-300', dot: 'bg-sky-500', ring: 'ring-sky-500' },
+        green: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500', ring: 'ring-emerald-500' },
+        rose: { bg: 'bg-rose-100 dark:bg-rose-900/50', text: 'text-rose-700 dark:text-rose-300', dot: 'bg-rose-500', ring: 'ring-rose-500' },
+        orange: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500', ring: 'ring-orange-500' },
     };
     const colors = colorVariants[habit.color as keyof typeof colorVariants] || colorVariants.purple;
-    const isCompleted = habit.current >= habit.goal;
+    const isCompletedForToday = habit.current >= habit.goal;
+    
+    const todayIndex = new Date().getDay(); // Sunday - 0, Monday - 1, etc.
+    const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const weekHistoryLabels = Array(7).fill(null).map((_, i) => {
+        const dayOffset = 6 - i;
+        const dayOfWeek = (todayIndex - dayOffset + 7) % 7;
+        return dayLabels[dayOfWeek];
+    });
 
     return (
-        <div className={`${colors.bg} p-4 rounded-xl flex items-center space-x-4`}>
-            <div className="text-3xl">{habit.icon}</div>
-            <div className="flex-1">
-                <p className={`font-bold ${colors.text}`}>{habit.name}</p>
-                <div className="flex items-center space-x-3 mt-1">
-                    <div className="flex items-center space-x-1 text-sm text-orange-500 dark:text-orange-400">
+        <div className={`${colors.bg} p-4 rounded-xl space-y-3`}>
+            <div className="flex items-center space-x-4">
+                <div className="text-3xl">{habit.icon}</div>
+                <div className="flex-1">
+                    <p className={`font-bold ${colors.text}`}>{habit.name}</p>
+                    <div className="flex items-center space-x-1 text-sm text-orange-500 dark:text-orange-400 mt-1">
                         <FlameIcon className="w-4 h-4" />
-                        <span>{habit.streak} days</span>
-                    </div>
-                     <div className="flex space-x-1.5 items-center" aria-label="Last 7 days history">
-                        {habit.history.map((completed, index) => (
-                            <div 
-                                key={index} 
-                                className={`w-2.5 h-2.5 rounded-full transition-colors ${completed ? colors.dot : 'bg-gray-300 dark:bg-neutral-600 opacity-50'}`}
-                            />
-                        ))}
+                        <span>{habit.streak} day streak</span>
                     </div>
                 </div>
+                <button 
+                    onClick={() => onIncrement(habit.id)} 
+                    disabled={isCompletedForToday}
+                    className="bg-white/50 dark:bg-black/20 rounded-lg px-4 py-2 text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label={`Increment progress for ${habit.name}`}
+                >
+                    <p className={`font-bold text-lg ${colors.text}`}>{habit.current}/{habit.goal}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{habit.unit}</p>
+                </button>
             </div>
-            <button 
-                onClick={() => onIncrement(habit.id)} 
-                disabled={isCompleted}
-                className="bg-white/50 dark:bg-black/20 rounded-lg px-4 py-2 text-center disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label={`Increment progress for ${habit.name}`}
-            >
-                <p className={`font-bold text-lg ${colors.text}`}>{habit.current}/{habit.goal}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{habit.unit}</p>
-            </button>
+            <div className="flex justify-around items-start pt-3 border-t border-white/50 dark:border-black/10" aria-label="Last 7 days history">
+                {habit.history.map((completed, index) => {
+                    const isToday = index === 6;
+                    return (
+                        <div key={index} className="flex flex-col items-center space-y-1.5 text-center">
+                            <span className={`text-xs font-medium ${isToday ? 'text-gray-800 dark:text-neutral-200' : 'text-gray-400 dark:text-neutral-500'}`}>{weekHistoryLabels[index]}</span>
+                             <div 
+                                className={`w-6 h-6 rounded-full transition-colors flex items-center justify-center text-white 
+                                    ${completed ? colors.dot : 'bg-gray-200 dark:bg-neutral-700'}
+                                    ${isToday && !completed ? `ring-2 ${colors.ring}` : ''}
+                                `}
+                            >
+                               {completed && <CheckIcon className="w-4 h-4"/>}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
