@@ -248,33 +248,60 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
     };
 
     const handleOpenEditModal = (task: ProjectTask) => {
-        openModal(
-            <EditTaskForm
-                task={task}
-                onSave={(updatedTask) => {
-                    const updatedTasks = project.tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
-                    onUpdate({ ...project, tasks: updatedTasks });
-                    closeModal();
-                }}
-                onDelete={() => {
-                    if (window.confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
-                        const updatedTasks = project.tasks.filter(t => t.id !== task.id);
-                        
-                        const allCompleted = updatedTasks.every(t => t.completed);
-                        const anyStarted = updatedTasks.some(t => t.completed);
-                        
-                        let newStatus = ProjectStatus.NotStarted;
-                        if (updatedTasks.length === 0) newStatus = ProjectStatus.NotStarted;
-                        else if (allCompleted) newStatus = ProjectStatus.Completed;
-                        else if (anyStarted) newStatus = ProjectStatus.InProgress;
+        const performDelete = () => {
+            const updatedTasks = project.tasks.filter(t => t.id !== task.id);
+            
+            const allCompleted = updatedTasks.every(t => t.completed);
+            const anyStarted = updatedTasks.some(t => t.completed);
+            
+            let newStatus = ProjectStatus.NotStarted;
+            if (updatedTasks.length === 0) newStatus = ProjectStatus.NotStarted;
+            else if (allCompleted) newStatus = ProjectStatus.Completed;
+            else if (anyStarted) newStatus = ProjectStatus.InProgress;
 
-                        onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
+            onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
+            closeModal();
+        };
+
+        const showEditForm = () => {
+            openModal(
+                <EditTaskForm
+                    task={task}
+                    onSave={(updatedTask) => {
+                        const updatedTasks = project.tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+                        onUpdate({ ...project, tasks: updatedTasks });
                         closeModal();
-                    }
-                }}
-                onClose={closeModal}
-            />
-        );
+                    }}
+                    onDelete={showConfirmation}
+                    onClose={closeModal}
+                />
+            );
+        };
+        
+        const showConfirmation = () => {
+            openModal(
+                <div className="space-y-4 text-center p-2">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-white" id="modal-title">Confirm Deletion</h2>
+                    <p className="text-gray-600 dark:text-neutral-300">Are you sure you want to delete this task? This action cannot be undone.</p>
+                    <div className="flex justify-center space-x-4 pt-2">
+                        <button 
+                            onClick={showEditForm}
+                            className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={performDelete} 
+                            className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        showEditForm();
     };
     
     return (
