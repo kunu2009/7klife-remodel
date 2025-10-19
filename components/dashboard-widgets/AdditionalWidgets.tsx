@@ -1,8 +1,9 @@
 import React from 'react';
 import { useHabits } from '../../hooks/useDataHooks';
 import { useProjects } from '../../hooks/useDataHooks';
-import { BriefcaseIcon, FlameIcon, LightbulbIcon, CheckCircleIcon } from '../icons';
-import { Habit, View } from '../../types';
+import useLocalStorage from '../../hooks/useLocalStorage';
+import { BriefcaseIcon, FlameIcon, LightbulbIcon, CheckCircleIcon, CreditCardIcon, GoalIcon } from '../icons';
+import { Habit, View, Subscription, Goal } from '../../types';
 
 interface WidgetProps {
     setActiveView: (view: View) => void;
@@ -48,7 +49,6 @@ const HabitProgressButton: React.FC<{ habit: Habit, onIncrement: (id: string) =>
 export const TodaysHabitsWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
     const { habits, incrementHabit } = useHabits();
     
-    // Show up to 4 habits, prioritizing incomplete ones
     const habitsToShow = habits
         .sort((a, b) => ((a.current >= a.goal) ? 1 : 0) - ((b.current >= b.goal) ? 1 : 0))
         .slice(0, 4);
@@ -196,6 +196,114 @@ export const FocusTasksWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
                     <CheckCircleIcon className="w-12 h-12 mx-auto text-green-400 dark:text-green-500" />
                     <h3 className="mt-2 text-sm font-semibold text-gray-800 dark:text-neutral-200">All caught up!</h3>
                     <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">You have no upcoming tasks.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- Subscriptions Widget ---
+export const SubscriptionsWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
+    const [subscriptions] = useLocalStorage<Subscription[]>('subscriptions', []);
+    const totalMonthly = subscriptions.reduce((acc, sub) => sub.billingCycle === 'monthly' ? acc + sub.amount : acc, 0);
+    const upcomingSubs = [...subscriptions]
+        .sort((a, b) => new Date(a.nextBilling).getTime() - new Date(b.nextBilling).getTime())
+        .slice(0, 3);
+
+    return (
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4 border border-black/5 dark:border-white/5">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                    <div className="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-full">
+                        <CreditCardIcon className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Subscriptions</h2>
+                </div>
+                <button onClick={() => setActiveView('more')} className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    View All
+                </button>
+            </div>
+
+            {subscriptions.length > 0 ? (
+                <>
+                    <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Monthly Total</p>
+                        <p className="text-3xl font-bold text-gray-800 dark:text-neutral-100">${totalMonthly.toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-neutral-700/50">
+                        {upcomingSubs.map(sub => (
+                            <div key={sub.id} className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <img src={sub.iconUrl} alt={sub.name} className="w-8 h-8 object-contain bg-white rounded-lg p-1 shadow-sm"/>
+                                    <p className="font-semibold text-sm">{sub.name}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-bold text-sm">${sub.amount.toFixed(2)}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Next: {new Date(sub.nextBilling).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <div className="text-center py-4">
+                    <CreditCardIcon className="w-12 h-12 mx-auto text-gray-300 dark:text-neutral-600" />
+                    <h3 className="mt-2 text-sm font-semibold text-gray-800 dark:text-neutral-200">No subscriptions</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">Add subscriptions in the 'More' tab.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- Goals Widget ---
+export const GoalsWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
+    const [goals] = useLocalStorage<Goal[]>('goals', []);
+    
+    const activeGoals = goals.filter(g => {
+        const completedMilestones = g.milestones.filter(m => m.completed).length;
+        return completedMilestones < g.milestones.length;
+    });
+
+    const goalToShow = activeGoals.length > 0
+        ? [...activeGoals].sort((a, b) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime())[0]
+        : null;
+
+    const progress = goalToShow ? 
+        (goalToShow.milestones.filter(m => m.completed).length / goalToShow.milestones.length) * 100 
+        : 0;
+
+    return (
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4 border border-black/5 dark:border-white/5">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                    <div className="bg-rose-100 dark:bg-rose-900/50 p-2 rounded-full">
+                        <GoalIcon className="w-6 h-6 text-rose-500 dark:text-rose-400" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Goals Overview</h2>
+                </div>
+                <button onClick={() => setActiveView('goals')} className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    View All
+                </button>
+            </div>
+            {goalToShow ? (
+                <div>
+                    <div className="flex justify-between items-baseline">
+                        <h3 className="font-bold text-gray-800 dark:text-neutral-100 truncate pr-4" title={goalToShow.title}>{goalToShow.title}</h3>
+                        <p className="font-bold text-rose-600 dark:text-rose-400 text-lg flex-shrink-0">{Math.round(progress)}%</p>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Target: {new Date(goalToShow.targetDate).toLocaleDateString()}</p>
+                    <div className="w-full bg-gray-200 dark:bg-neutral-700 rounded-full h-2">
+                        <div className="bg-rose-500 h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-center py-4">
+                    <GoalIcon className="w-12 h-12 mx-auto text-gray-300 dark:text-neutral-600" />
+                    <h3 className="mt-2 text-sm font-semibold text-gray-800 dark:text-neutral-200">No active goals</h3>
+                     <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">Set a new goal to see it here!</p>
                 </div>
             )}
         </div>

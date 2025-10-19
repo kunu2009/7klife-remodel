@@ -4,7 +4,7 @@ import { View } from '../types';
 import { PencilIcon, CheckIcon, DragHandleIcon } from './icons';
 import ProgressChartWidget from './dashboard-widgets/ProgressChartWidget';
 import QuoteWidget from './dashboard-widgets/QuickActionsWidget';
-import { TodaysHabitsWidget, JournalPromptWidget, FocusTasksWidget } from './dashboard-widgets/AdditionalWidgets';
+import { TodaysHabitsWidget, JournalPromptWidget, FocusTasksWidget, SubscriptionsWidget, GoalsWidget } from './dashboard-widgets/AdditionalWidgets';
 import ToggleSwitch from './ToggleSwitch';
 
 const WIDGET_CONFIG = {
@@ -12,6 +12,8 @@ const WIDGET_CONFIG = {
   habitsToday: { name: "Today's Habits", component: TodaysHabitsWidget },
   focusTasks: { name: 'Focus Tasks', component: FocusTasksWidget },
   journalPrompt: { name: 'Journal Prompt', component: JournalPromptWidget },
+  goals: { name: 'Goals Overview', component: GoalsWidget },
+  subscriptions: { name: 'Subscriptions', component: SubscriptionsWidget },
   quote: { name: 'Daily Quote', component: QuoteWidget },
 };
 
@@ -26,6 +28,8 @@ const DEFAULT_LAYOUT: WidgetState[] = [
   { id: 'progress', enabled: true },
   { id: 'habitsToday', enabled: true },
   { id: 'focusTasks', enabled: true },
+  { id: 'goals', enabled: true },
+  { id: 'subscriptions', enabled: true },
   { id: 'journalPrompt', enabled: true },
   { id: 'quote', enabled: true },
 ];
@@ -124,6 +128,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
                 return <JournalPromptWidget setActiveView={setActiveView} />;
               case 'focusTasks':
                 return <FocusTasksWidget setActiveView={setActiveView} />;
+              case 'subscriptions':
+                return <SubscriptionsWidget setActiveView={setActiveView} />;
+              case 'goals':
+                return <GoalsWidget setActiveView={setActiveView} />;
               default:
                 return null;
             }

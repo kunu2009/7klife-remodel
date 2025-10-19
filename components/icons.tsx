@@ -119,3 +119,9 @@ export const QuoteIcon: React.FC<IconProps> = ({ className }) => (
         <path d="M13 14.725c0-5.141 3.892-10.519 10-11.725l-1.964 4.519c-1.582 1.83-2.142 3.34-1.287 5.075 2.142.064 3.25.961 3.25 2.213 0 1.177-1.021 2.456-2.586 2.456-1.954 0-2.414-1.223-2.414-2.532zm-13 0c0-5.141 3.892-10.519 10-11.725l-1.964 4.519c-1.582 1.83-2.142 3.34-1.287 5.075 2.142.064 3.25.961 3.25 2.213 0 1.177-1.021 2.456-2.586 2.456-1.954 0-2.414-1.223-2.414-2.532z"/>
     </svg>
 );
+
+export const CreditCardIcon: React.FC<IconProps> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
+);
