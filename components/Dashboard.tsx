@@ -1,15 +1,17 @@
 import React, { useState, useRef } from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { Habit, Project, JournalEntry, View } from '../types';
+import { View } from '../types';
 import { PencilIcon, CheckIcon, DragHandleIcon } from './icons';
 import ProgressChartWidget from './dashboard-widgets/ProgressChartWidget';
 import QuickActionsWidget from './dashboard-widgets/QuickActionsWidget';
+import { TodaysHabitsWidget, JournalPromptWidget, FocusTasksWidget } from './dashboard-widgets/AdditionalWidgets';
 import ToggleSwitch from './ToggleSwitch';
-
-type WidgetComponentType = React.FC<any>;
 
 const WIDGET_CONFIG = {
   progress: { name: 'Overall Progress', component: ProgressChartWidget },
+  habitsToday: { name: "Today's Habits", component: TodaysHabitsWidget },
+  focusTasks: { name: 'Focus Tasks', component: FocusTasksWidget },
+  journalPrompt: { name: 'Journal Prompt', component: JournalPromptWidget },
   actions: { name: 'Quick Actions', component: QuickActionsWidget },
 };
 
@@ -22,6 +24,9 @@ interface WidgetState {
 
 const DEFAULT_LAYOUT: WidgetState[] = [
   { id: 'progress', enabled: true },
+  { id: 'habitsToday', enabled: true },
+  { id: 'focusTasks', enabled: true },
+  { id: 'journalPrompt', enabled: true },
   { id: 'actions', enabled: true },
 ];
 
@@ -30,10 +35,6 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
-  const [habits] = useLocalStorage<Habit[]>('habits', []);
-  const [projects] = useLocalStorage<Project[]>('projects', []);
-  const [entries] = useLocalStorage<JournalEntry[]>('journal_entries', []);
-  
   const [isEditing, setIsEditing] = useState(false);
   const [layout, setLayout] = useLocalStorage<WidgetState[]>('dashboard-layout', DEFAULT_LAYOUT);
 
@@ -69,7 +70,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
   };
   
   const handleDrop = () => {
-    if (dragItem.current === null || dragOverItem.current === null) return;
+    if (dragItem.current === null || dragOverItem.current === null || dragItem.current === dragOverItem.current) return;
     
     const newLayout = [...layout];
     const draggedItemContent = newLayout.splice(dragItem.current, 1)[0];
@@ -84,11 +85,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     e.currentTarget.classList.remove('opacity-50');
   };
 
-  const widgetProps = {
-    progress: { habits, projects, entries },
-    actions: { setActiveView },
-  };
-  
   const orderedWidgets = layout.map(widget => ({
       ...widget,
       ...WIDGET_CONFIG[widget.id]
@@ -101,7 +97,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
             <img src="/logo.jpg" alt="7k Life Logo" className="w-12 h-12 rounded-full object-cover" />
             <div>
                 <p className="text-gray-500 dark:text-gray-400">{getGreeting()}</p>
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-neutral-100">7k Life</h1>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-neutral-100">Home</h1>
             </div>
         </div>
         <button 
@@ -115,15 +111,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
       
       <div className="space-y-4">
         {(isEditing ? orderedWidgets : orderedWidgets.filter(w => w.enabled)).map((widget, index) => {
-          // FIX: Use a switch on the discriminated union `widget.id` to ensure type-safe props are passed to each component.
           const widgetContent = (() => {
             if (!widget.component) return null;
-            // FIX: Replaced dynamic widget.component with explicit components to ensure type-safe prop passing.
             switch (widget.id) {
               case 'progress':
-                return <ProgressChartWidget {...widgetProps.progress} />;
+                return <ProgressChartWidget />;
               case 'actions':
-                return <QuickActionsWidget {...widgetProps.actions} />;
+                return <QuickActionsWidget setActiveView={setActiveView} />;
+              case 'habitsToday':
+                return <TodaysHabitsWidget />;
+              case 'journalPrompt':
+                return <JournalPromptWidget setActiveView={setActiveView} />;
+              case 'focusTasks':
+                return <FocusTasksWidget setActiveView={setActiveView} />;
               default:
                 return null;
             }

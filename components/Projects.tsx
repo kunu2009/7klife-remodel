@@ -1,7 +1,7 @@
 import React from 'react';
 import { Project, ProjectStatus, ProjectTask, Recurrence } from '../types';
 import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon, RepeatIcon, SortIcon, ChevronDownIcon, CheckIcon } from './icons';
-import useLocalStorage from '../hooks/useLocalStorage';
+import { useProjects } from '../hooks/useDataHooks';
 import { useModal } from '../contexts/ModalContext';
 
 const AddProjectForm: React.FC<{ onAdd: (data: { name: string, tasks: string[] }) => void }> = ({ onAdd }) => {
@@ -489,30 +489,12 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
 }
 
 const Projects: React.FC = () => {
-  const [projects, setProjects] = useLocalStorage<Project[]>('projects', []);
+  const { projects, addProject, updateProject, deleteProject } = useProjects();
   const { openModal, closeModal } = useModal();
 
   const handleAddProject = (newProjectData: { name: string; tasks: string[] }) => {
-      const newProject: Project = {
-          name: newProjectData.name,
-          id: crypto.randomUUID(),
-          status: ProjectStatus.NotStarted,
-          tasks: newProjectData.tasks.map(taskName => ({
-              id: crypto.randomUUID(),
-              name: taskName,
-              completed: false,
-          })),
-      };
-      setProjects(prev => [newProject, ...prev]);
+      addProject(newProjectData);
       closeModal();
-  };
-
-  const handleUpdateProject = (updatedProject: Project) => {
-      setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-  };
-  
-  const handleDeleteProject = (projectId: string) => {
-    setProjects(prev => prev.filter(p => p.id !== projectId));
   };
 
   return (
@@ -526,7 +508,7 @@ const Projects: React.FC = () => {
         <div className="space-y-4">
             {projects.length > 0 ? (
                 projects.map(project => (
-                    <ProjectCard key={project.id} project={project} onUpdate={handleUpdateProject} onDelete={handleDeleteProject} />
+                    <ProjectCard key={project.id} project={project} onUpdate={updateProject} onDelete={deleteProject} />
                 ))
             ) : (
                 <div className="text-center py-12">

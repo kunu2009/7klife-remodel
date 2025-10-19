@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PlusIcon } from './icons';
 import { JournalEntry } from '../types';
-import useLocalStorage from '../hooks/useLocalStorage';
+import { useJournal } from '../hooks/useDataHooks';
 import { useModal } from '../contexts/ModalContext';
 
 const AddJournalEntryForm: React.FC<{ onAdd: (entry: Omit<JournalEntry, 'id'>) => void }> = ({ onAdd }) => {
@@ -85,16 +85,12 @@ const Calendar: React.FC<{ entries: JournalEntry[], onDateClick: (date: number) 
 };
 
 const Journal: React.FC = () => {
-    const [entries, setEntries] = useLocalStorage<JournalEntry[]>('journal_entries', []);
+    const { entries, addEntry } = useJournal();
     const [selectedDate, setSelectedDate] = useState<number | null>(new Date().getDate());
     const { openModal, closeModal } = useModal();
 
     const handleAddEntry = (newEntryData: Omit<JournalEntry, 'id'>) => {
-        const newEntry: JournalEntry = {
-            ...newEntryData,
-            id: crypto.randomUUID(),
-        };
-        setEntries(prev => [newEntry, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        addEntry(newEntryData);
         closeModal();
     };
 

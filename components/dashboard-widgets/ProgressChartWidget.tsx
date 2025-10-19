@@ -1,5 +1,5 @@
 import React from 'react';
-import { Habit, Project, JournalEntry } from '../../types';
+import { useHabits, useProjects, useJournal } from '../../hooks/useDataHooks';
 
 const CircularProgress: React.FC<{
   progress: number;
@@ -38,7 +38,11 @@ const CircularProgress: React.FC<{
   );
 };
 
-const MultiLayerProgressChart: React.FC<{ habits: Habit[]; projects: Project[]; entries: JournalEntry[] }> = ({ habits, projects, entries }) => {
+const MultiLayerProgressChart: React.FC = () => {
+    const { habits } = useHabits();
+    const { projects } = useProjects();
+    const { entries } = useJournal();
+
     const size = 220;
     const strokeWidth = 18;
 
@@ -62,28 +66,25 @@ const MultiLayerProgressChart: React.FC<{ habits: Habit[]; projects: Project[]; 
             </svg>
             <div className="text-center">
                 <p className="text-gray-500 dark:text-gray-400 text-sm">Overall Progress</p>
-                <p className="text-5xl font-bold text-gray-800 dark:text-neutral-100">{Math.round(totalProgress)}%</p>
+                <p className="text-5xl font-bold text-gray-800 dark:text-neutral-100">{Math.round(totalProgress) || 0}%</p>
                 <p className="text-gray-500 dark:text-gray-400 text-sm">Keep it up!</p>
             </div>
         </div>
     );
 };
 
+const ProgressChartWidget: React.FC = () => {
+  const { habits } = useHabits();
+  const { projects } = useProjects();
+  const { entries } = useJournal();
 
-interface ProgressChartWidgetProps {
-    habits: Habit[];
-    projects: Project[];
-    entries: JournalEntry[];
-}
-
-const ProgressChartWidget: React.FC<ProgressChartWidgetProps> = ({ habits, projects, entries }) => {
   const habitsCompleted = habits.filter(h => h.current >= h.goal).length;
-  const tasksToday = projects.flatMap(p => p.tasks).filter(t => !t.completed).length; // Simplified
+  const tasksLeft = projects.flatMap(p => p.tasks).filter(t => !t.completed).length;
   const journaledToday = entries.some(e => new Date(e.date).toDateString() === new Date().toDateString());
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 flex flex-col items-center">
-        <MultiLayerProgressChart habits={habits} projects={projects} entries={entries} />
+    <div className="bg-slate-50 dark:bg-neutral-800 rounded-2xl shadow-sm p-6 flex flex-col items-center">
+        <MultiLayerProgressChart />
         <div className="w-full grid grid-cols-3 gap-4 mt-6 text-center">
             <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Habits</p>
@@ -91,7 +92,7 @@ const ProgressChartWidget: React.FC<ProgressChartWidgetProps> = ({ habits, proje
             </div>
             <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Tasks</p>
-                <p className="font-bold text-lg text-sky-500 dark:text-sky-400">{tasksToday} left</p>
+                <p className="font-bold text-lg text-sky-500 dark:text-sky-400">{tasksLeft} left</p>
             </div>
             <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Journal</p>

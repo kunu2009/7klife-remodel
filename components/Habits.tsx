@@ -1,7 +1,7 @@
 import React from 'react';
 import { FlameIcon, PlusIcon, CheckIcon } from './icons';
 import { Habit } from '../types';
-import useLocalStorage from '../hooks/useLocalStorage';
+import { useHabits } from '../hooks/useDataHooks';
 import { useModal } from '../contexts/ModalContext';
 
 const HABIT_COLORS = ['purple', 'blue', 'green', 'rose', 'orange'];
@@ -162,99 +162,12 @@ const HabitItem: React.FC<{ habit: Habit, onIncrement: (id: string) => void }> =
 }
 
 const Habits: React.FC = () => {
-    const [habits, setHabits] = useLocalStorage<Habit[]>('habits', []);
+    const { habits, addHabit, incrementHabit } = useHabits();
     const { openModal, closeModal } = useModal();
 
-    React.useEffect(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const updatedHabits = habits.map(habit => {
-            const newHabit = { ...habit };
-            if (!newHabit.lastCompleted) {
-                return newHabit;
-            }
-
-            const lastCompletedDate = new Date(newHabit.lastCompleted);
-            lastCompletedDate.setHours(0, 0, 0, 0);
-
-            const diffTime = today.getTime() - lastCompletedDate.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays > 0) { // If it wasn't completed today
-                 // Reset daily progress
-                newHabit.current = 0;
-                
-                // Shift history for each missed day
-                const newHistory = [...(newHabit.history || Array(7).fill(false))];
-                for (let i = 0; i < Math.min(diffDays, 7); i++) {
-                    newHistory.shift();
-                    newHistory.push(false);
-                }
-                newHabit.history = newHistory;
-            }
-            
-            if (diffDays > 1) { // If streak was broken
-                newHabit.streak = 0;
-            }
-            
-            return newHabit;
-        });
-
-        if (JSON.stringify(updatedHabits) !== JSON.stringify(habits)) {
-            setHabits(updatedHabits);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     const handleAddHabit = (newHabitData: Omit<Habit, 'id' | 'streak' | 'history' | 'current'>) => {
-        const newHabit: Habit = {
-            ...newHabitData,
-            id: crypto.randomUUID(),
-            streak: 0,
-            history: Array(7).fill(false),
-            current: 0
-        };
-        setHabits(prev => [...prev, newHabit]);
+        addHabit(newHabitData);
         closeModal();
-    };
-
-    const handleIncrementHabit = (habitId: string) => {
-        setHabits(prev => prev.map(habit => {
-            if (habit.id === habitId) {
-                const newHabit = { ...habit };
-                const isAlreadyCompletedToday = newHabit.current >= newHabit.goal;
-
-                if (isAlreadyCompletedToday) return newHabit;
-
-                newHabit.current += 1;
-
-                const isNowCompleted = newHabit.current >= newHabit.goal;
-
-                if (isNowCompleted) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const yesterday = new Date(today);
-                    yesterday.setDate(today.getDate() - 1);
-
-                    const lastCompletedDate = newHabit.lastCompleted ? new Date(newHabit.lastCompleted) : null;
-                    if(lastCompletedDate) lastCompletedDate.setHours(0,0,0,0);
-
-                    if (lastCompletedDate && lastCompletedDate.getTime() === yesterday.getTime()) {
-                        newHabit.streak += 1;
-                    } else if (!lastCompletedDate || lastCompletedDate.getTime() !== today.getTime()) {
-                        newHabit.streak = 1;
-                    }
-                    
-                    newHabit.lastCompleted = new Date().toISOString();
-                    const newHistory = [...newHabit.history];
-                    newHistory[6] = true; // Mark today as completed
-                    newHabit.history = newHistory;
-                }
-                return newHabit;
-            }
-            return habit;
-        }));
     };
 
     return (
@@ -268,7 +181,7 @@ const Habits: React.FC = () => {
             
              <div className="space-y-3">
                 {habits.length > 0 ? (
-                    habits.map(habit => <HabitItem key={habit.id} habit={habit} onIncrement={handleIncrementHabit} />)
+                    habits.map(habit => <HabitItem key={habit.id} habit={habit} onIncrement={incrementHabit} />)
                 ) : (
                     <div className="text-center py-12">
                         <p className="text-gray-500 dark:text-gray-400">No habits yet.</p>
