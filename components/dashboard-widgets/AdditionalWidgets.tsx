@@ -4,6 +4,10 @@ import { useProjects } from '../../hooks/useDataHooks';
 import { BriefcaseIcon, FlameIcon, LightbulbIcon } from '../icons';
 import { Habit, View } from '../../types';
 
+interface WidgetProps {
+    setActiveView: (view: View) => void;
+}
+
 // --- Today's Habits Widget ---
 
 const HabitProgressButton: React.FC<{ habit: Habit, onIncrement: (id: string) => void }> = ({ habit, onIncrement }) => {
@@ -41,25 +45,36 @@ const HabitProgressButton: React.FC<{ habit: Habit, onIncrement: (id: string) =>
     );
 }
 
-export const TodaysHabitsWidget: React.FC = () => {
+export const TodaysHabitsWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
     const { habits, incrementHabit } = useHabits();
-    const incompleteHabits = habits.filter(h => h.current < h.goal);
+    
+    // Show up to 4 habits, prioritizing incomplete ones
+    const habitsToShow = habits
+        .sort((a, b) => ((a.current >= a.goal) ? 1 : 0) - ((b.current >= b.goal) ? 1 : 0))
+        .slice(0, 4);
+
+    const allHabitsCompleted = habits.length > 0 && habits.every(h => h.current >= h.goal);
 
     return (
-        <div className="bg-slate-50 dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4">
-            <div className="flex items-center space-x-3">
-                 <div className="bg-rose-100 dark:bg-rose-900/50 p-2 rounded-full">
-                    <FlameIcon className="w-6 h-6 text-rose-500 dark:text-rose-400" />
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4 border border-black/5 dark:border-white/5">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                    <div className="bg-rose-100 dark:bg-rose-900/50 p-2 rounded-full">
+                        <FlameIcon className="w-6 h-6 text-rose-500 dark:text-rose-400" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Today's Habits</h2>
                 </div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Today's Habits</h2>
+                <button onClick={() => setActiveView('habits')} className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    View All
+                </button>
             </div>
             {habits.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-neutral-400 py-4">No habits set up yet.</p>
-            ) : incompleteHabits.length === 0 ? (
+            ) : allHabitsCompleted ? (
                  <p className="text-center text-green-600 dark:text-green-400 font-semibold py-4">All habits completed for today!</p>
             ) : (
                 <div className="grid grid-cols-4 gap-x-4 gap-y-5">
-                    {habits.map(habit => (
+                    {habitsToShow.map(habit => (
                         <div key={habit.id} className="flex flex-col items-center space-y-2 text-center">
                             <HabitProgressButton habit={habit} onIncrement={incrementHabit} />
                             <p className="text-xs font-medium text-gray-600 dark:text-neutral-300 truncate w-16">{habit.name}</p>
@@ -92,15 +107,11 @@ const getDailyPrompt = () => {
     return journalPrompts[dayOfYear % journalPrompts.length];
 };
 
-interface JournalPromptWidgetProps {
-    setActiveView: (view: View) => void;
-}
-
-export const JournalPromptWidget: React.FC<JournalPromptWidgetProps> = ({ setActiveView }) => {
+export const JournalPromptWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
     const prompt = getDailyPrompt();
 
     return (
-        <div className="bg-slate-50 dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4 border border-black/5 dark:border-white/5">
             <div className="flex items-center space-x-3">
                 <div className="bg-amber-100 dark:bg-amber-900/50 p-2 rounded-full">
                     <LightbulbIcon className="w-6 h-6 text-amber-500 dark:text-amber-400" />
@@ -121,11 +132,7 @@ export const JournalPromptWidget: React.FC<JournalPromptWidgetProps> = ({ setAct
 
 // --- Focus Tasks Widget ---
 
-interface FocusTasksWidgetProps {
-    setActiveView: (view: View) => void;
-}
-
-export const FocusTasksWidget: React.FC<FocusTasksWidgetProps> = ({ setActiveView }) => {
+export const FocusTasksWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
     const { projects, toggleTask } = useProjects();
 
     const upcomingTasks = projects
@@ -139,7 +146,7 @@ export const FocusTasksWidget: React.FC<FocusTasksWidgetProps> = ({ setActiveVie
         .slice(0, 4);
 
     return (
-        <div className="bg-slate-50 dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4">
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4 border border-black/5 dark:border-white/5">
             <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-3">
                     <div className="bg-sky-100 dark:bg-sky-900/50 p-2 rounded-full">

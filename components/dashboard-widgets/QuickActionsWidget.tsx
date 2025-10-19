@@ -1,40 +1,40 @@
 import React from 'react';
-import { useModal } from '../../contexts/ModalContext';
-import { View } from '../../types';
+import { QuoteIcon } from '../icons';
 
-// TODO: These forms should be created as separate components for better organization
-const AddJournalEntryForm = () => <div className="text-black dark:text-white">Add Journal Form Placeholder</div>;
-const AddTaskForm = () => <div className="text-black dark:text-white">Add Task Form Placeholder</div>;
+const quotes = [
+    { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+    { text: "Well done is better than well said.", author: "Benjamin Franklin" },
+    { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+    { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+    { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" }
+];
 
-interface QuickActionsWidgetProps {
-    setActiveView: (view: View) => void;
-}
+const getDailyQuote = () => {
+    const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+    return quotes[dayOfYear % quotes.length];
+};
 
-const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({ setActiveView }) => {
-    const { openModal } = useModal();
+const QuoteWidget: React.FC = () => {
+    const { text, author } = getDailyQuote();
+
     return (
-        <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => { openModal(<AddJournalEntryForm />); }} className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                    <span className="text-2xl">✍️</span>
-                    <p className="font-semibold">New Journal Entry</p>
-                </button>
-                <button onClick={() => setActiveView('habits')} className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                    <span className="text-2xl">💧</span>
-                    <p className="font-semibold">Log Water Intake</p>
-                </button>
-                <button onClick={() => setActiveView('habits')} className="bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                    <span className="text-2xl">💪</span>
-                    <p className="font-semibold">Complete Workout</p>
-                </button>
-                <button onClick={() => { openModal(<AddTaskForm />); }} className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 p-4 rounded-xl text-left space-y-2 transition-transform hover:scale-105">
-                    <span className="text-2xl">🚀</span>
-                    <p className="font-semibold">Add New Task</p>
-                </button>
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4 border border-black/5 dark:border-white/5">
+            <div className="flex items-center space-x-3">
+                <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded-full">
+                    <QuoteIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Daily Quote</h2>
             </div>
-      </div>
+            <figure>
+                <blockquote className="text-gray-600 dark:text-neutral-300 italic">
+                    <p>"{text}"</p>
+                </blockquote>
+                <figcaption className="text-right text-gray-500 dark:text-neutral-400 text-sm mt-2">
+                    - {author}
+                </figcaption>
+            </figure>
+        </div>
     );
 };
 
-export default QuickActionsWidget;
+export default QuoteWidget;

@@ -35,8 +35,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white dark:bg-neutral-900 shadow-lg flex flex-col font-sans">
-      <main className="flex-1 pb-24 p-4 text-gray-800 dark:text-neutral-200 bg-gradient-to-b from-white to-neutral-50 dark:from-neutral-900 dark:to-black">
+    <div className="max-w-md mx-auto min-h-screen bg-neutral-50 dark:bg-neutral-900 shadow-lg flex flex-col font-sans">
+      <main className="flex-1 pb-24 p-4 text-gray-800 dark:text-neutral-200">
         {renderView()}
       </main>
       <BottomNav activeView={activeView} setActiveView={setActiveView} />

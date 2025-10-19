@@ -3,7 +3,7 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import { View } from '../types';
 import { PencilIcon, CheckIcon, DragHandleIcon } from './icons';
 import ProgressChartWidget from './dashboard-widgets/ProgressChartWidget';
-import QuickActionsWidget from './dashboard-widgets/QuickActionsWidget';
+import QuoteWidget from './dashboard-widgets/QuickActionsWidget';
 import { TodaysHabitsWidget, JournalPromptWidget, FocusTasksWidget } from './dashboard-widgets/AdditionalWidgets';
 import ToggleSwitch from './ToggleSwitch';
 
@@ -12,7 +12,7 @@ const WIDGET_CONFIG = {
   habitsToday: { name: "Today's Habits", component: TodaysHabitsWidget },
   focusTasks: { name: 'Focus Tasks', component: FocusTasksWidget },
   journalPrompt: { name: 'Journal Prompt', component: JournalPromptWidget },
-  actions: { name: 'Quick Actions', component: QuickActionsWidget },
+  quote: { name: 'Daily Quote', component: QuoteWidget },
 };
 
 type WidgetId = keyof typeof WIDGET_CONFIG;
@@ -27,7 +27,7 @@ const DEFAULT_LAYOUT: WidgetState[] = [
   { id: 'habitsToday', enabled: true },
   { id: 'focusTasks', enabled: true },
   { id: 'journalPrompt', enabled: true },
-  { id: 'actions', enabled: true },
+  { id: 'quote', enabled: true },
 ];
 
 interface DashboardProps {
@@ -116,10 +116,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
             switch (widget.id) {
               case 'progress':
                 return <ProgressChartWidget />;
-              case 'actions':
-                return <QuickActionsWidget setActiveView={setActiveView} />;
+              case 'quote':
+                return <QuoteWidget />;
               case 'habitsToday':
-                return <TodaysHabitsWidget />;
+                return <TodaysHabitsWidget setActiveView={setActiveView} />;
               case 'journalPrompt':
                 return <JournalPromptWidget setActiveView={setActiveView} />;
               case 'focusTasks':

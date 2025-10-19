@@ -83,7 +83,7 @@ const ProgressChartWidget: React.FC = () => {
   const journaledToday = entries.some(e => new Date(e.date).toDateString() === new Date().toDateString());
 
   return (
-    <div className="bg-slate-50 dark:bg-neutral-800 rounded-2xl shadow-sm p-6 flex flex-col items-center">
+    <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 flex flex-col items-center border border-black/5 dark:border-white/5">
         <MultiLayerProgressChart />
         <div className="w-full grid grid-cols-3 gap-4 mt-6 text-center">
             <div>
