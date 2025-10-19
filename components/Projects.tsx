@@ -134,6 +134,7 @@ const StatusBadge: React.FC<{ status: ProjectStatus }> = ({ status }) => {
 
 const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => void }> = ({ project, onUpdate }) => {
     const { openModal, closeModal } = useModal();
+    const [newTaskName, setNewTaskName] = React.useState('');
 
     const handleToggleTask = (taskId: string) => {
         const updatedTasks = project.tasks.map(task => 
@@ -147,6 +148,24 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
         else if (anyStarted) newStatus = ProjectStatus.InProgress;
 
         onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
+    };
+
+    const handleAddTask = () => {
+        if (newTaskName.trim() === '') return;
+        const newTask: ProjectTask = {
+            id: crypto.randomUUID(),
+            name: newTaskName.trim(),
+            completed: false,
+        };
+        const updatedTasks = [...project.tasks, newTask];
+
+        const anyStarted = updatedTasks.some(t => t.completed);
+        const newStatus = anyStarted && project.status === ProjectStatus.NotStarted
+            ? ProjectStatus.InProgress
+            : project.status;
+
+        onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
+        setNewTaskName('');
     };
     
     const handleMarkProjectCompleted = () => {
@@ -208,36 +227,64 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
             </div>
             <div className="space-y-3">
                 {project.tasks.length > 0 ? (
-                    project.tasks.map((task, index) => (
-                        <div key={task.id} className="flex items-center group">
-                            <div className="flex flex-col items-center mr-4">
-                                <button aria-label={`Toggle task ${task.name}`} onClick={() => handleToggleTask(task.id)} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-neutral-600'}`}>
-                                    {task.completed && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                                </button>
-                                {index < project.tasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600 mt-1"></div>}
-                            </div>
-                            <div className="flex-1">
-                                <p className={`transition-all duration-300 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>
-                                    {task.name}
-                                </p>
-                                {task.dueDate && (
-                                    <p className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">
-                                        Due: {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    project.tasks.map((task, index) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        // Robust date parsing to avoid timezone issues
+                        const parts = task.dueDate ? task.dueDate.split('-').map(p => parseInt(p, 10)) : null;
+                        const dueDateObj = parts ? new Date(parts[0], parts[1] - 1, parts[2]) : null;
+
+                        const isOverdue = !task.completed && dueDateObj && dueDateObj < today;
+
+                        return (
+                            <div key={task.id} className="flex items-center group">
+                                <div className="flex flex-col items-center mr-4">
+                                    <button aria-label={`Toggle task ${task.name}`} onClick={() => handleToggleTask(task.id)} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-neutral-600'}`}>
+                                        {task.completed && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                    </button>
+                                    {index < project.tasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600 mt-1"></div>}
+                                </div>
+                                <div className="flex-1">
+                                    <p className={`transition-all duration-300 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>
+                                        {task.name}
                                     </p>
-                                )}
+                                    {task.dueDate && (
+                                        <p className={`text-xs mt-0.5 ${isOverdue ? 'font-semibold text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-neutral-500'}`}>
+                                            Due: {new Date(task.dueDate).toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric' })}
+                                            {isOverdue && ' (Overdue)'}
+                                        </p>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => handleOpenEditModal(task)}
+                                    className="ml-2 text-gray-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    aria-label={`Edit details for ${task.name}`}
+                                >
+                                    <PencilIcon className="w-4 h-4" />
+                                </button>
                             </div>
-                             <button
-                                onClick={() => handleOpenEditModal(task)}
-                                className="ml-2 text-gray-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                aria-label={`Edit details for ${task.name}`}
-                            >
-                                <PencilIcon className="w-4 h-4" />
-                            </button>
-                        </div>
-                    ))
+                        )
+                    })
                 ) : (
                     <p className="text-sm text-gray-500 dark:text-neutral-400">No tasks yet. Add a task to get started!</p>
                 )}
+            </div>
+             <div className="flex items-center space-x-2 pt-4 border-t border-gray-100 dark:border-neutral-700/50 mt-4">
+                <input
+                    type="text"
+                    value={newTaskName}
+                    onChange={(e) => setNewTaskName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                    placeholder="Add a new task..."
+                    className="flex-grow bg-gray-100 dark:bg-neutral-700/80 border-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                    onClick={handleAddTask}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-indigo-700 transition-colors"
+                >
+                    Add
+                </button>
             </div>
         </div>
     );
