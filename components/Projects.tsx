@@ -1,6 +1,6 @@
 import React from 'react';
-import { Project, ProjectStatus, ProjectTask } from '../types';
-import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon } from './icons';
+import { Project, ProjectStatus, ProjectTask, Recurrence } from '../types';
+import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon, RepeatIcon } from './icons';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
@@ -77,14 +77,22 @@ const EditTaskForm: React.FC<{ task: ProjectTask; onSave: (task: ProjectTask) =>
     const [name, setName] = React.useState(task.name);
     const [description, setDescription] = React.useState(task.description || '');
     const [dueDate, setDueDate] = React.useState(task.dueDate ? task.dueDate.split('T')[0] : '');
+    const [recurrence, setRecurrence] = React.useState(task.recurrence?.frequency || 'none');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        let newRecurrence: Recurrence | undefined = undefined;
+        if (recurrence !== 'none') {
+            newRecurrence = { frequency: recurrence as Recurrence['frequency'] };
+        }
+
         onSave({
             ...task,
             name: name.trim(),
             description: description.trim(),
             dueDate: dueDate || undefined,
+            recurrence: newRecurrence,
         });
     };
 
@@ -99,9 +107,27 @@ const EditTaskForm: React.FC<{ task: ProjectTask; onSave: (task: ProjectTask) =>
                 <label htmlFor="task-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                 <textarea id="task-description" value={description} onChange={e => setDescription(e.target.value)} className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md" rows={3}></textarea>
             </div>
-            <div>
-                <label htmlFor="task-dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                <input id="task-dueDate" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md" />
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="task-dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
+                    <input id="task-dueDate" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md" />
+                </div>
+                 <div>
+                    <label htmlFor="task-recurrence" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Recurrence</label>
+                    <select
+                        id="task-recurrence"
+                        value={recurrence}
+                        onChange={e => setRecurrence(e.target.value)}
+                        className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md disabled:opacity-50"
+                        disabled={!dueDate}
+                    >
+                        <option value="none">None</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
             </div>
             <div className="flex justify-between items-center pt-2">
                 <button
@@ -137,9 +163,32 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
     const [newTaskName, setNewTaskName] = React.useState('');
 
     const handleToggleTask = (taskId: string) => {
-        const updatedTasks = project.tasks.map(task => 
-            task.id === taskId ? { ...task, completed: !task.completed } : task
-        );
+        const task = project.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        let updatedTasks;
+
+        // If it's a recurring task, reschedule it instead of completing it
+        if (task.recurrence && task.dueDate && !task.completed) {
+            const currentDate = new Date(task.dueDate + 'T00:00:00'); // Use T00 to avoid timezone issues
+            switch (task.recurrence.frequency) {
+                case 'daily': currentDate.setDate(currentDate.getDate() + 1); break;
+                case 'weekly': currentDate.setDate(currentDate.getDate() + 7); break;
+                case 'monthly': currentDate.setMonth(currentDate.getMonth() + 1); break;
+                case 'yearly': currentDate.setFullYear(currentDate.getFullYear() + 1); break;
+            }
+            const nextDueDate = currentDate.toISOString().split('T')[0];
+            
+            updatedTasks = project.tasks.map(t => 
+                t.id === taskId ? { ...t, dueDate: nextDueDate } : t
+            );
+        } else {
+             // Standard task completion
+            updatedTasks = project.tasks.map(t => 
+                t.id === taskId ? { ...t, completed: !t.completed } : t
+            );
+        }
+
         const allCompleted = updatedTasks.every(t => t.completed);
         const anyStarted = updatedTasks.some(t => t.completed);
         
@@ -169,7 +218,7 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
     };
     
     const handleMarkProjectCompleted = () => {
-        const allTasksCompleted = project.tasks.map(task => ({ ...task, completed: true }));
+        const allTasksCompleted = project.tasks.map(task => ({ ...task, completed: true, recurrence: undefined })); // Clear recurrence on project completion
         onUpdate({
             ...project,
             tasks: allTasksCompleted,
@@ -231,7 +280,6 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         
-                        // Robust date parsing to avoid timezone issues
                         const parts = task.dueDate ? task.dueDate.split('-').map(p => parseInt(p, 10)) : null;
                         const dueDateObj = parts ? new Date(parts[0], parts[1] - 1, parts[2]) : null;
 
@@ -250,10 +298,13 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                                         {task.name}
                                     </p>
                                     {task.dueDate && (
-                                        <p className={`text-xs mt-0.5 ${isOverdue ? 'font-semibold text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-neutral-500'}`}>
-                                            Due: {new Date(task.dueDate).toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric' })}
-                                            {isOverdue && ' (Overdue)'}
-                                        </p>
+                                        <div className="flex items-center space-x-2">
+                                            {task.recurrence && <RepeatIcon className="w-3 h-3 text-gray-400 dark:text-neutral-500" />}
+                                            <p className={`text-xs mt-0.5 ${isOverdue ? 'font-semibold text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-neutral-500'}`}>
+                                                Due: {new Date(task.dueDate).toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric' })}
+                                                {isOverdue && ' (Overdue)'}
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                                 <button

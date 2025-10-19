@@ -27,12 +27,17 @@ export enum ProjectStatus {
   Completed = 'Completed'
 }
 
+export interface Recurrence {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+}
+
 export interface ProjectTask {
     id: string;
     name: string;
     completed: boolean;
     description?: string;
     dueDate?: string; // Storing as ISO string
+    recurrence?: Recurrence;
 }
 
 export interface Project {
