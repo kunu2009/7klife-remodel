@@ -66,7 +66,7 @@ const AddHabitForm: React.FC<{ onAdd: (habit: Omit<Habit, 'id' | 'streak' | 'his
     );
 }
 
-const HabitItem: React.FC<{ habit: Habit, onUpdate: (habit: Habit) => void }> = ({ habit, onUpdate }) => {
+const HabitItem: React.FC<{ habit: Habit, onIncrement: (id: string) => void }> = ({ habit, onIncrement }) => {
     const colorVariants = {
         purple: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500' },
         blue: { bg: 'bg-sky-100 dark:bg-sky-900/50', text: 'text-sky-700 dark:text-sky-300', dot: 'bg-sky-500' },
@@ -75,22 +75,34 @@ const HabitItem: React.FC<{ habit: Habit, onUpdate: (habit: Habit) => void }> = 
         orange: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
     };
     const colors = colorVariants[habit.color as keyof typeof colorVariants] || colorVariants.purple;
-
-    const handleComplete = () => {
-        onUpdate({ ...habit, current: habit.current < habit.goal ? habit.current + 1 : habit.goal });
-    };
+    const isCompleted = habit.current >= habit.goal;
 
     return (
         <div className={`${colors.bg} p-4 rounded-xl flex items-center space-x-4`}>
             <div className="text-3xl">{habit.icon}</div>
             <div className="flex-1">
                 <p className={`font-bold ${colors.text}`}>{habit.name}</p>
-                 <div className="flex items-center space-x-1 text-sm text-orange-500 dark:text-orange-400">
-                    <FlameIcon className="w-4 h-4" />
-                    <span>{habit.streak} days</span>
+                <div className="flex items-center space-x-3 mt-1">
+                    <div className="flex items-center space-x-1 text-sm text-orange-500 dark:text-orange-400">
+                        <FlameIcon className="w-4 h-4" />
+                        <span>{habit.streak} days</span>
+                    </div>
+                     <div className="flex space-x-1.5 items-center" aria-label="Last 7 days history">
+                        {habit.history.map((completed, index) => (
+                            <div 
+                                key={index} 
+                                className={`w-2.5 h-2.5 rounded-full transition-colors ${completed ? colors.dot : 'bg-gray-300 dark:bg-neutral-600 opacity-50'}`}
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
-            <button onClick={handleComplete} className="bg-white/50 dark:bg-black/20 rounded-lg px-4 py-2 text-center">
+            <button 
+                onClick={() => onIncrement(habit.id)} 
+                disabled={isCompleted}
+                className="bg-white/50 dark:bg-black/20 rounded-lg px-4 py-2 text-center disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label={`Increment progress for ${habit.name}`}
+            >
                 <p className={`font-bold text-lg ${colors.text}`}>{habit.current}/{habit.goal}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{habit.unit}</p>
             </button>
@@ -101,6 +113,48 @@ const HabitItem: React.FC<{ habit: Habit, onUpdate: (habit: Habit) => void }> = 
 const Habits: React.FC = () => {
     const [habits, setHabits] = useLocalStorage<Habit[]>('habits', []);
     const { openModal, closeModal } = useModal();
+
+    React.useEffect(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const updatedHabits = habits.map(habit => {
+            const newHabit = { ...habit };
+            if (!newHabit.lastCompleted) {
+                return newHabit;
+            }
+
+            const lastCompletedDate = new Date(newHabit.lastCompleted);
+            lastCompletedDate.setHours(0, 0, 0, 0);
+
+            const diffTime = today.getTime() - lastCompletedDate.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 0) { // If it wasn't completed today
+                 // Reset daily progress
+                newHabit.current = 0;
+                
+                // Shift history for each missed day
+                const newHistory = [...(newHabit.history || Array(7).fill(false))];
+                for (let i = 0; i < Math.min(diffDays, 7); i++) {
+                    newHistory.shift();
+                    newHistory.push(false);
+                }
+                newHabit.history = newHistory;
+            }
+            
+            if (diffDays > 1) { // If streak was broken
+                newHabit.streak = 0;
+            }
+            
+            return newHabit;
+        });
+
+        if (JSON.stringify(updatedHabits) !== JSON.stringify(habits)) {
+            setHabits(updatedHabits);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleAddHabit = (newHabitData: Omit<Habit, 'id' | 'streak' | 'history' | 'current'>) => {
         const newHabit: Habit = {
@@ -114,8 +168,42 @@ const Habits: React.FC = () => {
         closeModal();
     };
 
-    const handleUpdateHabit = (updatedHabit: Habit) => {
-        setHabits(prev => prev.map(h => h.id === updatedHabit.id ? updatedHabit : h));
+    const handleIncrementHabit = (habitId: string) => {
+        setHabits(prev => prev.map(habit => {
+            if (habit.id === habitId) {
+                const newHabit = { ...habit };
+                const isAlreadyCompletedToday = newHabit.current >= newHabit.goal;
+
+                if (isAlreadyCompletedToday) return newHabit;
+
+                newHabit.current += 1;
+
+                const isNowCompleted = newHabit.current >= newHabit.goal;
+
+                if (isNowCompleted) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const yesterday = new Date(today);
+                    yesterday.setDate(today.getDate() - 1);
+
+                    const lastCompletedDate = newHabit.lastCompleted ? new Date(newHabit.lastCompleted) : null;
+                    if(lastCompletedDate) lastCompletedDate.setHours(0,0,0,0);
+
+                    if (lastCompletedDate && lastCompletedDate.getTime() === yesterday.getTime()) {
+                        newHabit.streak += 1;
+                    } else if (!lastCompletedDate || lastCompletedDate.getTime() !== today.getTime()) {
+                        newHabit.streak = 1;
+                    }
+                    
+                    newHabit.lastCompleted = new Date().toISOString();
+                    const newHistory = [...newHabit.history];
+                    newHistory[6] = true; // Mark today as completed
+                    newHabit.history = newHistory;
+                }
+                return newHabit;
+            }
+            return habit;
+        }));
     };
 
     return (
@@ -129,7 +217,7 @@ const Habits: React.FC = () => {
             
              <div className="space-y-3">
                 {habits.length > 0 ? (
-                    habits.map(habit => <HabitItem key={habit.id} habit={habit} onUpdate={handleUpdateHabit} />)
+                    habits.map(habit => <HabitItem key={habit.id} habit={habit} onIncrement={handleIncrementHabit} />)
                 ) : (
                     <div className="text-center py-12">
                         <p className="text-gray-500 dark:text-gray-400">No habits yet.</p>

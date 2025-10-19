@@ -10,6 +10,7 @@ export interface Habit {
   color: string;
   streak: number;
   history: boolean[]; // last 7 days, could be expanded
+  lastCompleted?: string; // ISO string date
 }
 
 export interface JournalEntry {
