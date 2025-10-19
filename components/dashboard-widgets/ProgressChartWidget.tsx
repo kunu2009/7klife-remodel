@@ -77,6 +77,20 @@ const ProgressChartWidget: React.FC = () => {
   const { habits } = useHabits();
   const { projects } = useProjects();
   const { entries } = useJournal();
+  
+  const isAppEmpty = habits.length === 0 && projects.length === 0;
+
+  if (isAppEmpty) {
+    return (
+      <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 flex flex-col items-center justify-center text-center border border-black/5 dark:border-white/5 min-h-[300px]">
+        <img src="/logo.jpg" alt="7k Life Logo" className="w-16 h-16 rounded-full object-cover opacity-70 mb-4" />
+        <h3 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Welcome!</h3>
+        <p className="text-gray-500 dark:text-neutral-400 mt-2 max-w-xs">
+          This is your progress hub. Add habits and projects to start tracking your journey.
+        </p>
+      </div>
+    );
+  }
 
   const habitsCompleted = habits.filter(h => h.current >= h.goal).length;
   const tasksLeft = projects.flatMap(p => p.tasks).filter(t => !t.completed).length;

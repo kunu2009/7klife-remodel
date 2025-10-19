@@ -1,7 +1,7 @@
 import React from 'react';
 import { useHabits } from '../../hooks/useDataHooks';
 import { useProjects } from '../../hooks/useDataHooks';
-import { BriefcaseIcon, FlameIcon, LightbulbIcon } from '../icons';
+import { BriefcaseIcon, FlameIcon, LightbulbIcon, CheckCircleIcon } from '../icons';
 import { Habit, View } from '../../types';
 
 interface WidgetProps {
@@ -69,7 +69,11 @@ export const TodaysHabitsWidget: React.FC<WidgetProps> = ({ setActiveView }) => 
                 </button>
             </div>
             {habits.length === 0 ? (
-                <p className="text-center text-gray-500 dark:text-neutral-400 py-4">No habits set up yet.</p>
+                <div className="text-center py-4">
+                    <FlameIcon className="w-12 h-12 mx-auto text-gray-300 dark:text-neutral-600" />
+                    <h3 className="mt-2 text-sm font-semibold text-gray-800 dark:text-neutral-200">No habits yet</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">Tap 'View All' to add your first habit!</p>
+                </div>
             ) : allHabitsCompleted ? (
                  <p className="text-center text-green-600 dark:text-green-400 font-semibold py-4">All habits completed for today!</p>
             ) : (
@@ -188,7 +192,11 @@ export const FocusTasksWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
                     })}
                 </div>
             ) : (
-                <p className="text-center text-gray-500 dark:text-neutral-400 py-4">No upcoming tasks. You're all caught up!</p>
+                <div className="text-center py-4">
+                    <CheckCircleIcon className="w-12 h-12 mx-auto text-green-400 dark:text-green-500" />
+                    <h3 className="mt-2 text-sm font-semibold text-gray-800 dark:text-neutral-200">All caught up!</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">You have no upcoming tasks.</p>
+                </div>
             )}
         </div>
     );
