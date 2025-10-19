@@ -158,7 +158,7 @@ const StatusBadge: React.FC<{ status: ProjectStatus }> = ({ status }) => {
     return <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status]}`}>{status}</span>;
 }
 
-const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => void }> = ({ project, onUpdate }) => {
+const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => void, onDelete: (projectId: string) => void }> = ({ project, onUpdate, onDelete }) => {
     const { openModal, closeModal } = useModal();
     const [newTaskName, setNewTaskName] = React.useState('');
     const [sortBy, setSortBy] = React.useState('default');
@@ -279,8 +279,33 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
             closeModal();
         };
 
-        const showEditForm = () => {
-            openModal(
+        const EditTaskWithConfirmation: React.FC = () => {
+            const [view, setView] = React.useState<'editing' | 'confirming'>('editing');
+
+            if (view === 'confirming') {
+                return (
+                    <div className="space-y-4 text-center p-2">
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-white" id="modal-title">Confirm Deletion</h2>
+                        <p className="text-gray-600 dark:text-neutral-300">Are you sure you want to delete this task? This action cannot be undone.</p>
+                        <div className="flex justify-center space-x-4 pt-2">
+                            <button 
+                                onClick={() => setView('editing')}
+                                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={performDelete} 
+                                className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+    
+            return (
                 <EditTaskForm
                     task={task}
                     onSave={(updatedTask) => {
@@ -288,53 +313,69 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                         onUpdate({ ...project, tasks: updatedTasks });
                         closeModal();
                     }}
-                    onDelete={showConfirmation}
+                    onDelete={() => setView('confirming')}
                     onClose={closeModal}
                 />
             );
         };
-        
-        const showConfirmation = () => {
-            openModal(
-                <div className="space-y-4 text-center p-2">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-white" id="modal-title">Confirm Deletion</h2>
-                    <p className="text-gray-600 dark:text-neutral-300">Are you sure you want to delete this task? This action cannot be undone.</p>
-                    <div className="flex justify-center space-x-4 pt-2">
-                        <button 
-                            onClick={showEditForm}
-                            className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            onClick={performDelete} 
-                            className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                        >
-                            Delete
-                        </button>
-                    </div>
-                </div>
-            );
-        };
 
-        showEditForm();
+        openModal(<EditTaskWithConfirmation />);
+    };
+
+    const handleDeleteProject = () => {
+        const ConfirmationDialog = () => (
+            <div className="space-y-4 text-center p-2">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white" id="modal-title">Delete Project?</h2>
+                <p className="text-gray-600 dark:text-neutral-300">
+                    Are you sure you want to delete the project "{project.name}"? All of its tasks will be removed permanently. This action cannot be undone.
+                </p>
+                <div className="flex justify-center space-x-4 pt-2">
+                    <button
+                        onClick={closeModal}
+                        className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => {
+                            onDelete(project.id);
+                            closeModal();
+                        }}
+                        className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                    >
+                        Delete Project
+                    </button>
+                </div>
+            </div>
+        );
+        openModal(<ConfirmationDialog />);
     };
     
     return (
         <div className="bg-white dark:bg-neutral-800 p-5 rounded-xl shadow-sm">
-            <div className="flex justify-between items-start mb-3">
-                 <div className="flex items-center space-x-2">
-                    <h3 className="font-bold text-gray-800 dark:text-neutral-100 text-lg">{project.name}</h3>
+            <div className="flex justify-between items-start mb-3 space-x-2">
+                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-800 dark:text-neutral-100 text-lg truncate" title={project.name}>
+                        {project.name}
+                    </h3>
                     {project.status !== ProjectStatus.Completed && (
                         <button
                             onClick={handleMarkProjectCompleted}
-                            className="text-gray-400 hover:text-green-500 transition-colors"
+                            className="text-gray-400 hover:text-green-500 transition-colors flex-shrink-0"
                             aria-label={`Mark project ${project.name} as completed`}
                             title="Mark all tasks as complete"
                         >
                             <CheckCircleIcon className="w-5 h-5" />
                         </button>
                     )}
+                    <button
+                        onClick={handleDeleteProject}
+                        className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                        aria-label={`Delete project ${project.name}`}
+                        title="Delete project"
+                    >
+                        <TrashIcon className="w-5 h-5" />
+                    </button>
                 </div>
                 <StatusBadge status={project.status} />
             </div>
@@ -460,6 +501,10 @@ const Projects: React.FC = () => {
   const handleUpdateProject = (updatedProject: Project) => {
       setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
   };
+  
+  const handleDeleteProject = (projectId: string) => {
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+  };
 
   return (
     <div className="space-y-6">
@@ -472,7 +517,7 @@ const Projects: React.FC = () => {
         <div className="space-y-4">
             {projects.length > 0 ? (
                 projects.map(project => (
-                    <ProjectCard key={project.id} project={project} onUpdate={handleUpdateProject} />
+                    <ProjectCard key={project.id} project={project} onUpdate={handleUpdateProject} onDelete={handleDeleteProject} />
                 ))
             ) : (
                 <div className="text-center py-12">
