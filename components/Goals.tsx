@@ -1,16 +1,39 @@
 import React from 'react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { Goal, GoalMilestone } from '../types';
-import { PlusIcon, GoalIcon } from './icons';
+import { PlusIcon, GoalIcon, XIcon } from './icons';
 import { useModal } from '../contexts/ModalContext';
 
-const AddGoalForm: React.FC<{ onAdd: (goal: Omit<Goal, 'id' | 'milestones'>) => void }> = ({ onAdd }) => {
+const AddGoalForm: React.FC<{ onAdd: (goal: { title: string; targetDate: string; milestones: string[] }) => void }> = ({ onAdd }) => {
     const [title, setTitle] = React.useState('');
     const [targetDate, setTargetDate] = React.useState('');
+    const [milestones, setMilestones] = React.useState<string[]>(['', '', '']); // Start with 3 milestones
+
+    const handleMilestoneChange = (index: number, value: string) => {
+        const newMilestones = [...milestones];
+        newMilestones[index] = value;
+        setMilestones(newMilestones);
+    };
+
+    const handleAddMilestoneInput = () => {
+        setMilestones([...milestones, '']);
+    };
+
+    const handleRemoveMilestoneInput = (index: number) => {
+        // Prevent removing below 3 milestones
+        if (milestones.length > 3) {
+            setMilestones(milestones.filter((_, i) => i !== index));
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onAdd({ title, targetDate });
+        const nonEmptyMilestones = milestones.map(m => m.trim()).filter(m => m);
+        if (nonEmptyMilestones.length < 3) {
+            alert('Please fill out at least three milestones.');
+            return;
+        }
+        onAdd({ title, targetDate, milestones: nonEmptyMilestones });
     };
 
     return (
@@ -18,12 +41,44 @@ const AddGoalForm: React.FC<{ onAdd: (goal: Omit<Goal, 'id' | 'milestones'>) => 
             <h2 className="text-xl font-bold text-gray-800 dark:text-white">Set a New Goal</h2>
             <input type="text" placeholder="Goal Title" value={title} onChange={e => setTitle(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md" required />
             <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md" required />
+            
+            <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Milestones (at least 3)</label>
+                <div className="space-y-2 mt-1">
+                    {milestones.map((milestone, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                            <input
+                                type="text"
+                                placeholder={`Milestone ${index + 1}`}
+                                value={milestone}
+                                onChange={e => handleMilestoneChange(index, e.target.value)}
+                                className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none"
+                                required
+                            />
+                             <button
+                                type="button"
+                                onClick={() => handleRemoveMilestoneInput(index)}
+                                className={`text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                disabled={milestones.length <= 3}
+                                aria-label="Remove milestone"
+                            >
+                                <XIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+                <button type="button" onClick={handleAddMilestoneInput} className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                    + Add another milestone
+                </button>
+            </div>
+            
             <button type="submit" className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Set Goal</button>
         </form>
     );
 };
 
 const GoalCard: React.FC<{ goal: Goal, onUpdate: (goal: Goal) => void }> = ({ goal, onUpdate }) => {
+    const [newMilestoneText, setNewMilestoneText] = React.useState('');
     const completedMilestones = goal.milestones.filter(m => m.completed).length;
     const progress = goal.milestones.length > 0 ? (completedMilestones / goal.milestones.length) * 100 : 0;
 
@@ -33,6 +88,24 @@ const GoalCard: React.FC<{ goal: Goal, onUpdate: (goal: Goal) => void }> = ({ go
         );
         onUpdate({ ...goal, milestones: updatedMilestones });
     };
+
+    const handleAddNewMilestone = () => {
+        if (newMilestoneText.trim() === '') return;
+        const newMilestone: GoalMilestone = {
+            id: crypto.randomUUID(),
+            text: newMilestoneText.trim(),
+            completed: false,
+        };
+        onUpdate({ ...goal, milestones: [...goal.milestones, newMilestone] });
+        setNewMilestoneText(''); // Clear input after adding
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleAddNewMilestone();
+        }
+    }
 
     return (
         <div className="bg-white dark:bg-neutral-800 p-5 rounded-xl shadow-sm space-y-3">
@@ -49,10 +122,24 @@ const GoalCard: React.FC<{ goal: Goal, onUpdate: (goal: Goal) => void }> = ({ go
              <div className="space-y-2 pt-2">
                 {goal.milestones.map(milestone => (
                     <div key={milestone.id} className="flex items-center cursor-pointer" onClick={() => handleToggleMilestone(milestone.id)}>
-                        <input type="checkbox" checked={milestone.completed} readOnly className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-neutral-600 dark:bg-neutral-700" />
-                        <p className={`ml-3 ${milestone.completed ? 'line-through text-gray-400 dark:text-neutral-500' : ''}`}>{milestone.text}</p>
+                        <input type="checkbox" checked={milestone.completed} readOnly className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 pointer-events-none" />
+                        <p className={`ml-3 ${milestone.completed ? 'line-through text-gray-400 dark:text-neutral-500' : 'text-gray-800 dark:text-neutral-200'}`}>{milestone.text}</p>
                     </div>
                 ))}
+            </div>
+            {/* Add new milestone form */}
+            <div className="flex items-center space-x-2 pt-2">
+                <input 
+                    type="text" 
+                    value={newMilestoneText}
+                    onChange={(e) => setNewMilestoneText(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Add a new milestone"
+                    className="flex-grow px-3 py-2 bg-gray-100 dark:bg-neutral-700 border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                />
+                <button onClick={handleAddNewMilestone} className="bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-3 py-2 rounded-md text-sm font-semibold hover:bg-indigo-200 dark:hover:bg-indigo-900 transition-colors">
+                    Add
+                </button>
             </div>
         </div>
     );
@@ -62,8 +149,17 @@ const Goals: React.FC = () => {
     const [goals, setGoals] = useLocalStorage<Goal[]>('goals', []);
     const { openModal, closeModal } = useModal();
 
-    const handleAddGoal = (newGoalData: Omit<Goal, 'id' | 'milestones'>) => {
-        const newGoal: Goal = { ...newGoalData, id: crypto.randomUUID(), milestones: [{id: crypto.randomUUID(), text: 'First step!', completed: false}] }; // Add a default milestone
+    const handleAddGoal = (newGoalData: { title: string; targetDate: string; milestones: string[] }) => {
+        const newGoal: Goal = { 
+            id: crypto.randomUUID(),
+            title: newGoalData.title,
+            targetDate: newGoalData.targetDate,
+            milestones: newGoalData.milestones.map(text => ({
+                id: crypto.randomUUID(),
+                text,
+                completed: false
+            }))
+        };
         setGoals(prev => [...prev, newGoal]);
         closeModal();
     };

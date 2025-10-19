@@ -1,21 +1,74 @@
 import React from 'react';
 import { Project, ProjectStatus, ProjectTask } from '../types';
-import { PlusIcon } from './icons';
+import { PlusIcon, XIcon } from './icons';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
-const AddProjectForm: React.FC<{ onAdd: (project: Omit<Project, 'id' | 'status' | 'tasks'>) => void }> = ({ onAdd }) => {
+const AddProjectForm: React.FC<{ onAdd: (data: { name: string, tasks: string[] }) => void }> = ({ onAdd }) => {
     const [name, setName] = React.useState('');
+    const [tasks, setTasks] = React.useState<string[]>(['']);
+
+    const handleTaskChange = (index: number, value: string) => {
+        const newTasks = [...tasks];
+        newTasks[index] = value;
+        setTasks(newTasks);
+    };
+
+    const handleAddTask = () => {
+        setTasks([...tasks, '']);
+    };
+
+    const handleRemoveTask = (index: number) => {
+        if (tasks.length > 1) {
+            setTasks(tasks.filter((_, i) => i !== index));
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onAdd({ name });
+        const nonEmptyTasks = tasks.map(t => t.trim()).filter(t => t);
+        onAdd({ name, tasks: nonEmptyTasks });
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <h2 className="text-xl font-bold text-gray-800 dark:text-white">Add New Project</h2>
-            <input type="text" placeholder="Project Name" value={name} onChange={e => setName(e.target.value)} className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none" required />
-            <button type="submit" className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Add Project</button>
+            
+            <div>
+                <label htmlFor="project-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Project Name</label>
+                <input id="project-name" type="text" placeholder="e.g., Website Redesign" value={name} onChange={e => setName(e.target.value)} className="mt-1 w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none" required />
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Initial Tasks</label>
+                <div className="space-y-2 mt-1">
+                    {tasks.map((task, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                            <input
+                                type="text"
+                                placeholder={`Task ${index + 1}`}
+                                value={task}
+                                onChange={e => handleTaskChange(index, e.target.value)}
+                                className="w-full px-3 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md shadow-sm focus:outline-none"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => handleRemoveTask(index)}
+                                className={`text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                disabled={tasks.length <= 1}
+                                aria-label="Remove task"
+                            >
+                                <XIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+                <button type="button" onClick={handleAddTask} className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                    + Add another task
+                </button>
+            </div>
+
+            <button type="submit" className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Add Project</button>
         </form>
     );
 };
@@ -38,7 +91,7 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
         const anyStarted = updatedTasks.some(t => t.completed);
         
         let newStatus = ProjectStatus.NotStarted;
-        if (allCompleted) newStatus = ProjectStatus.Completed;
+        if (allCompleted && updatedTasks.length > 0) newStatus = ProjectStatus.Completed;
         else if (anyStarted) newStatus = ProjectStatus.InProgress;
 
         onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
@@ -51,17 +104,21 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                 <StatusBadge status={project.status} />
             </div>
             <div className="space-y-3">
-                {project.tasks.map((task, index) => (
-                    <div key={task.id} className="flex items-center cursor-pointer" onClick={() => handleToggleTask(task.id)}>
-                        <div className="flex flex-col items-center mr-4">
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-neutral-600'}`}>
-                                {task.completed && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                {project.tasks.length > 0 ? (
+                    project.tasks.map((task, index) => (
+                        <div key={task.id} className="flex items-center cursor-pointer" onClick={() => handleToggleTask(task.id)}>
+                            <div className="flex flex-col items-center mr-4">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-neutral-600'}`}>
+                                    {task.completed && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                </div>
+                                {index < project.tasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600"></div>}
                             </div>
-                            {index < project.tasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600"></div>}
+                            <p className={`flex-1 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>{task.name}</p>
                         </div>
-                        <p className={`flex-1 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>{task.name}</p>
-                    </div>
-                ))}
+                    ))
+                ) : (
+                    <p className="text-sm text-gray-500 dark:text-neutral-400">No tasks yet. Add a task to get started!</p>
+                )}
             </div>
         </div>
     );
@@ -71,12 +128,16 @@ const Projects: React.FC = () => {
   const [projects, setProjects] = useLocalStorage<Project[]>('projects', []);
   const { openModal, closeModal } = useModal();
 
-  const handleAddProject = (newProjectData: { name: string }) => {
+  const handleAddProject = (newProjectData: { name: string; tasks: string[] }) => {
       const newProject: Project = {
-          ...newProjectData,
+          name: newProjectData.name,
           id: crypto.randomUUID(),
           status: ProjectStatus.NotStarted,
-          tasks: [], // Start with no tasks
+          tasks: newProjectData.tasks.map(taskName => ({
+              id: crypto.randomUUID(),
+              name: taskName,
+              completed: false,
+          })),
       };
       setProjects(prev => [newProject, ...prev]);
       closeModal();
