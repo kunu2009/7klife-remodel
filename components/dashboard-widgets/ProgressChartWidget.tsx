@@ -1,5 +1,6 @@
 import React from 'react';
-import { useHabits, useProjects, useJournal } from '../../hooks/useDataHooks';
+// FIX: Import habit helper functions
+import { useHabits, useProjects, useJournal, getToday, getCompletion, isHabitCompleted, isDueOn } from '../../hooks/useDataHooks';
 import { LogoIcon } from '../icons';
 
 const CircularProgress: React.FC<{
@@ -47,8 +48,12 @@ const MultiLayerProgressChart: React.FC = () => {
     const size = 220;
     const strokeWidth = 18;
 
-    const habitsCompleted = habits.filter(h => h.current >= h.goal).length;
-    const habitsProgress = habits.length > 0 ? (habitsCompleted / habits.length) * 100 : 0;
+    // FIX: Correctly calculate habit progress for today.
+    const today = new Date();
+    const todayStr = getToday(today);
+    const habitsForToday = habits.filter(h => !h.archived && isDueOn(h, today));
+    const habitsCompleted = habitsForToday.filter(h => isHabitCompleted(h, getCompletion(h, todayStr))).length;
+    const habitsProgress = habitsForToday.length > 0 ? (habitsCompleted / habitsForToday.length) * 100 : 0;
     
     const tasksCompleted = projects.flatMap(p => p.tasks).filter(t => t.completed).length;
     const totalTasks = projects.flatMap(p => p.tasks).length;
@@ -93,7 +98,11 @@ const ProgressChartWidget: React.FC = () => {
     );
   }
 
-  const habitsCompleted = habits.filter(h => h.current >= h.goal).length;
+  // FIX: Correctly calculate completed habits for today.
+  const today = new Date();
+  const todayStr = getToday(today);
+  const habitsForToday = habits.filter(h => !h.archived && isDueOn(h, today));
+  const habitsCompleted = habitsForToday.filter(h => isHabitCompleted(h, getCompletion(h, todayStr))).length;
   const tasksLeft = projects.flatMap(p => p.tasks).filter(t => !t.completed).length;
   const journaledToday = entries.some(e => new Date(e.date).toDateString() === new Date().toDateString());
 
@@ -103,7 +112,8 @@ const ProgressChartWidget: React.FC = () => {
         <div className="w-full grid grid-cols-3 gap-4 mt-6 text-center">
             <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Habits</p>
-                <p className="font-bold text-lg text-purple-600 dark:text-purple-400">{habitsCompleted}/{habits.length}</p>
+                {/* FIX: Show progress against habits due today. */}
+                <p className="font-bold text-lg text-purple-600 dark:text-purple-400">{habitsCompleted}/{habitsForToday.length}</p>
             </div>
             <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Tasks</p>

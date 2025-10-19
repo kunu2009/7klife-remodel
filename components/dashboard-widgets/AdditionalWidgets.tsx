@@ -1,8 +1,8 @@
 import React from 'react';
-import { useHabits } from '../../hooks/useDataHooks';
+import { useHabits, isDueOn, getToday, getCompletion, isHabitCompleted } from '../../hooks/useDataHooks';
 import { useProjects } from '../../hooks/useDataHooks';
 import useLocalStorage from '../../hooks/useLocalStorage';
-import { BriefcaseIcon, FlameIcon, LightbulbIcon, CheckCircleIcon, CreditCardIcon, GoalIcon } from '../icons';
+import { BriefcaseIcon, FlameIcon, LightbulbIcon, CheckCircleIcon, CreditCardIcon, GoalIcon, CheckIcon } from '../icons';
 import { Habit, View, Subscription, Goal } from '../../types';
 
 interface WidgetProps {
@@ -11,9 +11,16 @@ interface WidgetProps {
 
 // --- Today's Habits Widget ---
 
-const HabitProgressButton: React.FC<{ habit: Habit, onIncrement: (id: string) => void }> = ({ habit, onIncrement }) => {
-    const isCompleted = habit.current >= habit.goal;
-    const progressPercentage = Math.min((habit.current / habit.goal) * 100, 100);
+const HabitProgressButton: React.FC<{ habit: Habit, onLog: (id: string, value: number) => void }> = ({ habit, onLog }) => {
+    const todayCompletion = getCompletion(habit, getToday());
+    const completed = isHabitCompleted(habit, todayCompletion);
+
+    let progressPercentage = 0;
+    if (habit.type === 'measurable' && habit.goal && todayCompletion?.value) {
+        progressPercentage = Math.min((todayCompletion.value / habit.goal) * 100, 100);
+    } else if (completed) {
+        progressPercentage = 100;
+    }
 
     const colorVariants = {
         purple: { ring: 'ring-purple-500', text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500' },
@@ -24,22 +31,33 @@ const HabitProgressButton: React.FC<{ habit: Habit, onIncrement: (id: string) =>
     };
     const colors = colorVariants[habit.color as keyof typeof colorVariants] || colorVariants.purple;
 
+    const handleClick = () => {
+        if (habit.type === 'yes-no') {
+            onLog(habit.id, completed ? 0 : 1);
+        } else {
+            const currentValue = todayCompletion?.value || 0;
+            if (currentValue < (habit.goal || 1)) {
+                 onLog(habit.id, currentValue + 1);
+            }
+        }
+    };
+
     return (
         <button
-            onClick={() => onIncrement(habit.id)}
-            disabled={isCompleted}
+            onClick={handleClick}
+            disabled={completed}
             className={`relative w-16 h-16 flex-shrink-0 rounded-full flex items-center justify-center transition-all duration-300
-                ${isCompleted ? 'bg-green-100 dark:bg-green-900/50' : `bg-white dark:bg-neutral-700/50 ring-2 ring-inset ${colors.ring}`}`}
-            aria-label={`Increment ${habit.name}. Current progress ${habit.current} of ${habit.goal}`}
+                ${completed ? 'bg-green-100 dark:bg-green-900/50' : `bg-white dark:bg-neutral-700/50 ring-2 ring-inset ${colors.ring}`}`}
+            aria-label={`Increment ${habit.name}.`}
         >
             <div
                 className={`absolute inset-0 rounded-full opacity-20 ${colors.bg}`}
                 style={{ clipPath: `inset(${100 - progressPercentage}% 0 0 0)` }}
             />
             <span className="text-2xl z-10">{habit.icon}</span>
-            {isCompleted && (
+            {completed && (
                 <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center z-20 shadow">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                    <CheckIcon className="w-3 h-3" strokeWidth="3"/>
                 </div>
             )}
         </button>
@@ -47,13 +65,19 @@ const HabitProgressButton: React.FC<{ habit: Habit, onIncrement: (id: string) =>
 }
 
 export const TodaysHabitsWidget: React.FC<WidgetProps> = ({ setActiveView }) => {
-    const { habits, incrementHabit } = useHabits();
+    const { habits, logCompletion } = useHabits();
     
-    const habitsToShow = habits
-        .sort((a, b) => ((a.current >= a.goal) ? 1 : 0) - ((b.current >= b.goal) ? 1 : 0))
+    const habitsForToday = habits.filter(h => !h.archived && isDueOn(h, new Date()));
+    
+    const habitsToShow = habitsForToday
+        .sort((a, b) => {
+            const aCompleted = isHabitCompleted(a, getCompletion(a, getToday()));
+            const bCompleted = isHabitCompleted(b, getCompletion(b, getToday()));
+            return (aCompleted ? 1 : 0) - (bCompleted ? 1 : 0);
+        })
         .slice(0, 4);
 
-    const allHabitsCompleted = habits.length > 0 && habits.every(h => h.current >= h.goal);
+    const allHabitsCompleted = habitsForToday.length > 0 && habitsForToday.every(h => isHabitCompleted(h, getCompletion(h, getToday())));
 
     return (
         <div className="bg-white dark:bg-neutral-800 rounded-2xl shadow-sm p-6 space-y-4 border border-black/5 dark:border-white/5">
@@ -68,11 +92,11 @@ export const TodaysHabitsWidget: React.FC<WidgetProps> = ({ setActiveView }) => 
                     View All
                 </button>
             </div>
-            {habits.length === 0 ? (
+            {habitsForToday.length === 0 ? (
                 <div className="text-center py-4">
                     <FlameIcon className="w-12 h-12 mx-auto text-gray-300 dark:text-neutral-600" />
-                    <h3 className="mt-2 text-sm font-semibold text-gray-800 dark:text-neutral-200">No habits yet</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">Tap 'View All' to add your first habit!</p>
+                    <h3 className="mt-2 text-sm font-semibold text-gray-800 dark:text-neutral-200">No habits for today</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">Tap 'View All' to add habits.</p>
                 </div>
             ) : allHabitsCompleted ? (
                  <p className="text-center text-green-600 dark:text-green-400 font-semibold py-4">All habits completed for today!</p>
@@ -80,7 +104,7 @@ export const TodaysHabitsWidget: React.FC<WidgetProps> = ({ setActiveView }) => 
                 <div className="grid grid-cols-4 gap-x-4 gap-y-5">
                     {habitsToShow.map(habit => (
                         <div key={habit.id} className="flex flex-col items-center space-y-2 text-center">
-                            <HabitProgressButton habit={habit} onIncrement={incrementHabit} />
+                            <HabitProgressButton habit={habit} onLog={logCompletion} />
                             <p className="text-xs font-medium text-gray-600 dark:text-neutral-300 truncate w-16">{habit.name}</p>
                         </div>
                     ))}

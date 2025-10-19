@@ -1,17 +1,24 @@
 export type View = 'dashboard' | 'habits' | 'journal' | 'projects' | 'more' | 'inventory' | 'goals';
 
+export interface HabitCompletion {
+  date: string; // ISO string date YYYY-MM-DD
+  note?: string;
+  value?: number; // For measurable habits
+}
+
 export interface Habit {
   id: string;
   name: string;
   icon: string;
-  goal: number;
-  current: number;
-  unit: string;
   color: string;
-  streak: number;
-  history: boolean[]; // last 7 days, could be expanded
-  lastCompleted?: string; // ISO string date
+  archived: boolean;
+  type: 'measurable' | 'yes-no';
+  schedule: number[]; // 0-6 for Sunday-Saturday
+  goal?: number; // For 'measurable' type
+  unit?: string; // For 'measurable' type
+  completions: HabitCompletion[];
 }
+
 
 export interface JournalEntry {
   id: string;

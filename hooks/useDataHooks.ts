@@ -1,93 +1,151 @@
 import useLocalStorage from './useLocalStorage';
-import { Habit, JournalEntry, Project, ProjectStatus, ProjectTask } from '../types';
+import { Habit, HabitCompletion, JournalEntry, Project, ProjectStatus, ProjectTask } from '../types';
 import { useEffect } from 'react';
+
+// --- Date Helpers ---
+export const getToday = (date: Date = new Date()): string => {
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD
+};
+
+// --- Habit Hook Helpers ---
+export const isDueOn = (habit: Habit, date: Date): boolean => {
+    return habit.schedule.includes(date.getDay());
+};
+
+export const getCompletion = (habit: Habit, date: string): HabitCompletion | undefined => {
+    return habit.completions.find(c => c.date === date);
+};
+
+export const isHabitCompleted = (habit: Habit, completion?: HabitCompletion): boolean => {
+    if (!completion) return false;
+    if (habit.type === 'yes-no') return true;
+    return completion.value !== undefined && habit.goal !== undefined && completion.value >= habit.goal;
+};
+
+export const calculateCurrentStreak = (habit: Habit): number => {
+    let streak = 0;
+    const today = new Date();
+    const completionsByDate = new Map(habit.completions.map(c => [c.date, c]));
+
+    // Check if completed today if it was due
+    const todayStr = getToday(today);
+    if (isDueOn(habit, today)) {
+        const todayCompletion = completionsByDate.get(todayStr);
+        if (todayCompletion && isHabitCompleted(habit, todayCompletion)) {
+            streak++;
+        } else {
+            // Not completed today, streak must be calculated from yesterday
+            today.setDate(today.getDate() - 1);
+        }
+    } else {
+        // Not due today, start check from yesterday
+        today.setDate(today.getDate() - 1);
+    }
+    
+    // Go backwards from yesterday
+    for (let d = today; ; d.setDate(d.getDate() - 1)) {
+        if (isDueOn(habit, d)) {
+            const dateStr = getToday(d);
+            const completion = completionsByDate.get(dateStr);
+            if (completion && isHabitCompleted(habit, completion)) {
+                streak++;
+            } else {
+                break; // Streak broken
+            }
+        }
+        // If it's not a due day, we just skip it and the streak continues.
+        if (streak > 365 * 5) break; // Safety break for perf
+    }
+    
+    return streak;
+};
+
+export const calculateLongestStreak = (habit: Habit): number => {
+    if (habit.completions.length === 0) return 0;
+    
+    let longestStreak = 0;
+    let currentStreak = 0;
+    
+    const sortedCompletions = [...habit.completions].sort((a,b) => a.date.localeCompare(b.date));
+    const completionsByDate = new Map(sortedCompletions.map(c => [c.date, c]));
+
+    const firstDate = new Date(sortedCompletions[0].date);
+    const lastDate = new Date(sortedCompletions[sortedCompletions.length - 1].date);
+    
+    for (let d = firstDate; d <= lastDate; d.setDate(d.getDate() + 1)) {
+        if (isDueOn(habit, d)) {
+            const dateStr = getToday(d);
+            const completion = completionsByDate.get(dateStr);
+            if (completion && isHabitCompleted(habit, completion)) {
+                currentStreak++;
+            } else {
+                longestStreak = Math.max(longestStreak, currentStreak);
+                currentStreak = 0;
+            }
+        }
+    }
+    
+    longestStreak = Math.max(longestStreak, currentStreak);
+    return longestStreak;
+};
+
 
 // --- Habit Hook ---
 export function useHabits() {
     const [habits, setHabits] = useLocalStorage<Habit[]>('habits', []);
 
-    useEffect(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const updatedHabits = habits.map(habit => {
-            const newHabit = { ...habit };
-            if (!newHabit.lastCompleted) {
-                return newHabit;
-            }
-
-            const lastCompletedDate = new Date(newHabit.lastCompleted);
-            lastCompletedDate.setHours(0, 0, 0, 0);
-
-            const diffTime = today.getTime() - lastCompletedDate.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays > 0) { // If it wasn't completed today
-                newHabit.current = 0;
-                
-                const newHistory = [...(newHabit.history || Array(7).fill(false))];
-                for (let i = 0; i < Math.min(diffDays, 7); i++) {
-                    newHistory.shift();
-                    newHistory.push(false);
-                }
-                newHabit.history = newHistory;
-            }
-            
-            if (diffDays > 1) { // If streak was broken
-                newHabit.streak = 0;
-            }
-            
-            return newHabit;
-        });
-
-        if (JSON.stringify(updatedHabits) !== JSON.stringify(habits)) {
-            setHabits(updatedHabits);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const addHabit = (newHabitData: Omit<Habit, 'id' | 'streak' | 'history' | 'current'>) => {
+    const addHabit = (newHabitData: Partial<Habit>) => {
         const newHabit: Habit = {
-            ...newHabitData,
             id: crypto.randomUUID(),
-            streak: 0,
-            history: Array(7).fill(false),
-            current: 0
+            name: newHabitData.name || 'New Habit',
+            icon: newHabitData.icon || '🎯',
+            color: newHabitData.color || 'purple',
+            archived: false,
+            type: newHabitData.type || 'yes-no',
+            schedule: newHabitData.schedule || [0, 1, 2, 3, 4, 5, 6],
+            goal: newHabitData.goal || 1,
+            unit: newHabitData.unit || 'times',
+            completions: [],
         };
         setHabits(prev => [...prev, newHabit]);
     };
 
-    const incrementHabit = (habitId: string) => {
+    const updateHabit = (updatedHabitData: Habit) => {
+        setHabits(prev => prev.map(h => h.id === updatedHabitData.id ? {...h, ...updatedHabitData} : h));
+    };
+    
+    const deleteHabit = (habitId: string) => {
+        setHabits(prev => prev.filter(h => h.id !== habitId));
+    };
+
+    const archiveHabit = (habitId: string, archive = true) => {
+        setHabits(prev => prev.map(h => h.id === habitId ? { ...h, archived: archive } : h));
+    };
+
+    const logCompletion = (habitId: string, value: number, note?: string) => {
+        const todayStr = getToday();
         setHabits(prev => prev.map(habit => {
             if (habit.id === habitId) {
                 const newHabit = { ...habit };
-                const isAlreadyCompletedToday = newHabit.current >= newHabit.goal;
-
-                if (isAlreadyCompletedToday) return newHabit;
-
-                newHabit.current += 1;
-
-                const isNowCompleted = newHabit.current >= newHabit.goal;
-
-                if (isNowCompleted) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const yesterday = new Date(today);
-                    yesterday.setDate(today.getDate() - 1);
-
-                    const lastCompletedDate = newHabit.lastCompleted ? new Date(newHabit.lastCompleted) : null;
-                    if(lastCompletedDate) lastCompletedDate.setHours(0,0,0,0);
-
-                    if (lastCompletedDate && lastCompletedDate.getTime() === yesterday.getTime()) {
-                        newHabit.streak += 1;
-                    } else if (!lastCompletedDate || lastCompletedDate.getTime() !== today.getTime()) {
-                        newHabit.streak = 1;
+                const existingCompletionIndex = newHabit.completions.findIndex(c => c.date === todayStr);
+                
+                if (existingCompletionIndex > -1) {
+                    if (value > 0) {
+                        // Update existing completion
+                        newHabit.completions[existingCompletionIndex] = {
+                            ...newHabit.completions[existingCompletionIndex],
+                            value,
+                            note: note || newHabit.completions[existingCompletionIndex].note,
+                        };
+                    } else {
+                        // Remove completion if value is 0 or less
+                        newHabit.completions.splice(existingCompletionIndex, 1);
                     }
-                    
-                    newHabit.lastCompleted = new Date().toISOString();
-                    const newHistory = [...newHabit.history];
-                    newHistory[6] = true; // Mark today as completed
-                    newHabit.history = newHistory;
+                } else if (value > 0) {
+                    // Add new completion
+                    const newCompletion: HabitCompletion = { date: todayStr, value };
+                    if (note) newCompletion.note = note;
+                    newHabit.completions.push(newCompletion);
                 }
                 return newHabit;
             }
@@ -95,7 +153,7 @@ export function useHabits() {
         }));
     };
     
-    return { habits, addHabit, incrementHabit };
+    return { habits, addHabit, updateHabit, deleteHabit, archiveHabit, logCompletion };
 }
 
 // --- Journal Hook ---
@@ -110,7 +168,17 @@ export function useJournal() {
         setEntries(prev => [newEntry, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     };
 
-    return { entries, addEntry };
+    const updateEntry = (updatedEntry: JournalEntry) => {
+        setEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        );
+    };
+
+    const deleteEntry = (entryId: string) => {
+        setEntries(prev => prev.filter(e => e.id !== entryId));
+    };
+
+    return { entries, addEntry, updateEntry, deleteEntry };
 }
 
 // --- Projects Hook ---
