@@ -12,8 +12,8 @@ const CircularProgress: React.FC<{
   radius: number;
   strokeWidth: number;
   color: string;
-}> = ({ progress, radius, strokeWidth, color }) => {
-  const size = radius * 2 + strokeWidth;
+  size: number;
+}> = ({ progress, radius, strokeWidth, color, size }) => {
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (progress / 100) * circumference;
 
@@ -62,9 +62,9 @@ const MultiLayerProgressChart: React.FC<{ habits: Habit[]; projects: Project[]; 
     return (
         <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
             <svg className="absolute inset-0" width={size} height={size}>
-                <CircularProgress progress={habitsProgress} radius={100} strokeWidth={strokeWidth} color="text-purple-500" />
-                <CircularProgress progress={projectsProgress} radius={78} strokeWidth={strokeWidth} color="text-sky-500" />
-                <CircularProgress progress={journalProgress} radius={56} strokeWidth={strokeWidth} color="text-amber-500" />
+                <CircularProgress progress={habitsProgress} radius={100} strokeWidth={strokeWidth} color="text-purple-500" size={size} />
+                <CircularProgress progress={projectsProgress} radius={78} strokeWidth={strokeWidth} color="text-sky-500" size={size} />
+                <CircularProgress progress={journalProgress} radius={56} strokeWidth={strokeWidth} color="text-amber-500" size={size} />
             </svg>
             <div className="text-center">
                 <p className="text-gray-500 dark:text-gray-400 text-sm">Overall Progress</p>

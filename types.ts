@@ -30,6 +30,8 @@ export interface ProjectTask {
     id: string;
     name: string;
     completed: boolean;
+    description?: string;
+    dueDate?: string; // Storing as ISO string
 }
 
 export interface Project {
