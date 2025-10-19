@@ -1,6 +1,6 @@
 import React from 'react';
 import { Project, ProjectStatus, ProjectTask } from '../types';
-import { PlusIcon, XIcon, PencilIcon, TrashIcon } from './icons';
+import { PlusIcon, XIcon, PencilIcon, TrashIcon, CheckCircleIcon } from './icons';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useModal } from '../contexts/ModalContext';
 
@@ -133,7 +133,6 @@ const StatusBadge: React.FC<{ status: ProjectStatus }> = ({ status }) => {
 }
 
 const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => void }> = ({ project, onUpdate }) => {
-    const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
     const { openModal, closeModal } = useModal();
 
     const handleToggleTask = (taskId: string) => {
@@ -149,18 +148,14 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
 
         onUpdate({ ...project, tasks: updatedTasks, status: newStatus });
     };
-
-    const handleSaveTaskName = (taskId: string, newName: string) => {
-        const trimmedName = newName.trim();
-        const originalTask = project.tasks.find(t => t.id === taskId);
-
-        if (trimmedName && originalTask && trimmedName !== originalTask.name) {
-            const updatedTasks = project.tasks.map(task =>
-                task.id === taskId ? { ...task, name: trimmedName } : task
-            );
-            onUpdate({ ...project, tasks: updatedTasks });
-        }
-        setEditingTaskId(null);
+    
+    const handleMarkProjectCompleted = () => {
+        const allTasksCompleted = project.tasks.map(task => ({ ...task, completed: true }));
+        onUpdate({
+            ...project,
+            tasks: allTasksCompleted,
+            status: ProjectStatus.Completed
+        });
     };
 
     const handleOpenEditModal = (task: ProjectTask) => {
@@ -196,7 +191,19 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
     return (
         <div className="bg-white dark:bg-neutral-800 p-5 rounded-xl shadow-sm">
             <div className="flex justify-between items-start mb-3">
-                <h3 className="font-bold text-gray-800 dark:text-neutral-100 text-lg">{project.name}</h3>
+                 <div className="flex items-center space-x-2">
+                    <h3 className="font-bold text-gray-800 dark:text-neutral-100 text-lg">{project.name}</h3>
+                    {project.status !== ProjectStatus.Completed && (
+                        <button
+                            onClick={handleMarkProjectCompleted}
+                            className="text-gray-400 hover:text-green-500 transition-colors"
+                            aria-label={`Mark project ${project.name} as completed`}
+                            title="Mark all tasks as complete"
+                        >
+                            <CheckCircleIcon className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
                 <StatusBadge status={project.status} />
             </div>
             <div className="space-y-3">
@@ -210,26 +217,9 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                                 {index < project.tasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600 mt-1"></div>}
                             </div>
                             <div className="flex-1">
-                                {editingTaskId === task.id ? (
-                                    <input
-                                        type="text"
-                                        defaultValue={task.name}
-                                        autoFocus
-                                        onBlur={(e) => handleSaveTaskName(task.id, e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') handleSaveTaskName(task.id, e.currentTarget.value);
-                                            if (e.key === 'Escape') setEditingTaskId(null);
-                                        }}
-                                        className="w-full bg-transparent focus:bg-white dark:focus:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1 -mx-1"
-                                    />
-                                ) : (
-                                    <p
-                                        onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); }}
-                                        className={`cursor-pointer rounded px-1 -mx-1 hover:bg-gray-100 dark:hover:bg-neutral-700/50 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}
-                                    >
-                                        {task.name}
-                                    </p>
-                                )}
+                                <p className={`transition-all duration-300 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>
+                                    {task.name}
+                                </p>
                                 {task.dueDate && (
                                     <p className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">
                                         Due: {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
