@@ -161,6 +161,27 @@ const StatusBadge: React.FC<{ status: ProjectStatus }> = ({ status }) => {
 const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => void }> = ({ project, onUpdate }) => {
     const { openModal, closeModal } = useModal();
     const [newTaskName, setNewTaskName] = React.useState('');
+    const [sortBy, setSortBy] = React.useState('default');
+
+    const sortedTasks = React.useMemo(() => {
+        const tasksToSort = [...project.tasks];
+
+        if (sortBy === 'dueDate') {
+            return tasksToSort.sort((a, b) => {
+                if (a.dueDate && b.dueDate) {
+                    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+                }
+                return a.dueDate ? -1 : 1; // Tasks with due dates come first
+            });
+        }
+        if (sortBy === 'status') {
+            return tasksToSort.sort((a, b) => {
+                if (a.completed === b.completed) return 0;
+                return a.completed ? 1 : -1; // Incomplete tasks come first
+            });
+        }
+        return project.tasks; // Default order
+    }, [project.tasks, sortBy]);
 
     const handleToggleTask = (taskId: string) => {
         const task = project.tasks.find(t => t.id === taskId);
@@ -274,9 +295,23 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                 </div>
                 <StatusBadge status={project.status} />
             </div>
+            {project.tasks.length > 1 && (
+                <div className="flex justify-end mb-3 -mt-2">
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="text-sm bg-gray-50 dark:bg-neutral-700/50 border-gray-200 dark:border-neutral-700 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-gray-600 dark:text-neutral-300"
+                        aria-label="Sort tasks by"
+                    >
+                        <option value="default">Default</option>
+                        <option value="dueDate">Due Date</option>
+                        <option value="status">Status</option>
+                    </select>
+                </div>
+            )}
             <div className="space-y-3">
-                {project.tasks.length > 0 ? (
-                    project.tasks.map((task, index) => {
+                {sortedTasks.length > 0 ? (
+                    sortedTasks.map((task, index) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         
@@ -291,7 +326,7 @@ const ProjectCard: React.FC<{ project: Project, onUpdate: (project: Project) => 
                                     <button aria-label={`Toggle task ${task.name}`} onClick={() => handleToggleTask(task.id)} className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-neutral-600'}`}>
                                         {task.completed && <div className="w-2 h-2 bg-white rounded-full"></div>}
                                     </button>
-                                    {index < project.tasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600 mt-1"></div>}
+                                    {index < sortedTasks.length - 1 && <div className="w-0.5 h-6 bg-gray-300 dark:bg-neutral-600 mt-1"></div>}
                                 </div>
                                 <div className="flex-1">
                                     <p className={`transition-all duration-300 ${task.completed ? 'text-gray-400 dark:text-neutral-500 line-through' : 'text-gray-600 dark:text-neutral-300'}`}>
