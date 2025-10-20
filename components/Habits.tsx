@@ -281,9 +281,12 @@ const Habits: React.FC = () => {
 
     const handleDelete = (id: string) => {
         openModal(
-            <div className="space-y-4 text-center p-2">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Delete Habit?</h2>
-                <p className="text-gray-600 dark:text-neutral-300">Are you sure? This will permanently delete this habit and all its history.</p>
+            <div className="space-y-4 text-center p-2 flex flex-col items-center">
+                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">
+                    <TrashIcon className="h-6 w-6 text-red-600 dark:text-red-400" strokeWidth="1.5" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Delete Habit</h2>
+                <p className="text-gray-600 dark:text-neutral-300 px-4">Are you sure? This will permanently delete this habit and all its history. This action cannot be undone.</p>
                 <div className="flex justify-center space-x-4 pt-2">
                     <button onClick={closeModal} className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600">Cancel</button>
                     <button onClick={() => { deleteHabit(id); setView('list'); setSelectedHabit(null); closeModal(); }} className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Delete</button>
