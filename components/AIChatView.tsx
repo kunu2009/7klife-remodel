@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, Chat } from '@google/genai';
 import { useAPIKey } from '../contexts/APIKeyContext';
 import { useJournal } from '../hooks/useDataHooks';
 import { useHabits } from '../hooks/useDataHooks';
 import { useProjects } from '../hooks/useDataHooks';
 import { LogoIcon, SparklesIcon } from './icons';
+
+// Define Chat type locally to avoid a top-level import that breaks the build
+type Chat = any;
 
 interface Message {
     role: 'user' | 'model';
@@ -28,15 +30,13 @@ const AIChatView: React.FC = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const initializeChat = () => {
+    const initializeChat = async (): Promise<Chat | null> => {
         if (!apiKey) {
             setError("API Key is not set. Please add it in the 'More' tab under Settings.");
             return null;
         }
-
         setError(null);
         
-        // This is a simplified representation. For large data, you'd need a more robust strategy.
         const context = `
             USER'S DATA CONTEXT:
             - Today's Date: ${new Date().toLocaleDateString()}
@@ -52,6 +52,8 @@ const AIChatView: React.FC = () => {
         `;
         
         try {
+            // Dynamically import the module to prevent build errors
+            const { GoogleGenAI } = await import('@google/genai');
             const ai = new GoogleGenAI({ apiKey });
             const newChat = ai.chats.create({
                 model: 'gemini-2.5-flash',
@@ -72,8 +74,6 @@ const AIChatView: React.FC = () => {
         if (apiKey) {
             initializeChat();
         }
-    // We only re-initialize if the API key changes or the component mounts.
-    // The component remounts when the user switches views, capturing the latest data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [apiKey]);
 
@@ -81,7 +81,10 @@ const AIChatView: React.FC = () => {
     const sendMessage = async () => {
         if (!input.trim() || loading) return;
 
-        const currentChat = chat || initializeChat();
+        let currentChat = chat;
+        if (!currentChat) {
+            currentChat = await initializeChat();
+        }
         if (!currentChat) return;
 
         const userMessage: Message = { role: 'user', text: input };
