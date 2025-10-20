@@ -38,14 +38,14 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(event.request)
         .then(response => {
+          // Cache hit - return response
           if (response) {
             return response;
           }
-          
-          const fetchRequest = event.request.clone();
 
-          return fetch(fetchRequest).then(
+          return fetch(event.request).then(
             response => {
+              // Check if we received a valid response
               if (!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
                 return response;
               }
@@ -59,7 +59,14 @@ self.addEventListener('fetch', event => {
 
               return response;
             }
-          );
+          ).catch(() => {
+            // Network request failed, and there's no cache hit.
+            // This is the offline case.
+            // For a single page app, for navigation requests, returning the root is a good fallback.
+            if (event.request.mode === 'navigate') {
+              return caches.match('/');
+            }
+          });
         })
     );
   }
