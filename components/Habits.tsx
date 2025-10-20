@@ -52,7 +52,7 @@ const AddEditHabitForm: FC<{ onSave: (habitData: Partial<Habit>) => void, habitT
                 <div className="flex items-center space-x-2">
                     <input type="text" value={icon} onChange={e => setIcon(e.target.value)} className="input w-16 text-center text-2xl p-2" maxLength={2} />
                     <div className="flex-1 grid grid-cols-6 gap-2">
-                    {PRESET_ICONS.map(i => <button key={i} type="button" onClick={() => setIcon(i)} className={`text-2xl rounded-lg p-2 ${icon === i ? 'bg-indigo-100 dark:bg-indigo-900 ring-2 ring-indigo-500' : 'bg-gray-100 dark:bg-neutral-700'}`}>{i}</button>)}
+                    {PRESET_ICONS.map(i => <button key={i} type="button" onClick={() => setIcon(i)} className={`text-2xl rounded-lg p-2 flex items-center justify-center aspect-square ${icon === i ? 'bg-indigo-100 dark:bg-indigo-900 ring-2 ring-indigo-500' : 'bg-gray-100 dark:bg-neutral-700'}`}>{i}</button>)}
                     </div>
                 </div>
             </div>
