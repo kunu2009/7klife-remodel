@@ -31,9 +31,9 @@ const AIChatView: React.FC = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // Effect to dynamically load the library
+    // Effect to dynamically load the library from its full URL
     useEffect(() => {
-        import('@google/genai')
+        import('https://aistudiocdn.com/google-genai@0.0.0-20240723-163450-beta/beta')
             .then(module => {
                 setGenAI(module);
             })
