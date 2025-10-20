@@ -53,7 +53,7 @@ const AIChatView: React.FC = () => {
         
         try {
             // Use a temporary API key for initialization, but the actual key is passed in the request.
-            // This is a workaround for the SDK's design. The actual key from context will be used in `sendMessage`.
+            // This is a workaround for the SDK's design. The actual key from context will be used in \`sendMessage\`.
             const ai = new GoogleGenAI({ apiKey: "temp-will-be-overridden" });
             const newChat = ai.chats.create({
                 model: 'gemini-2.5-flash',
