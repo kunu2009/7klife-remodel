@@ -88,23 +88,25 @@ const AddEditHabitForm: FC<{ onSave: (habitData: Partial<Habit>) => void, habitT
 
 // --- Calendar Heatmap ---
 const CalendarHeatmap: FC<{ completions: HabitCompletion[], color: string }> = ({ completions, color }) => {
-    const year = new Date().getFullYear();
-    const startDate = new Date(year, 0, 1);
-    const endDate = new Date(year, 11, 31);
+    const year = new Date().getUTCFullYear();
+    const startDate = new Date(Date.UTC(year, 0, 1));
+    const endDate = new Date(Date.UTC(year, 11, 31));
     const days = [];
     let day = new Date(startDate);
     while (day <= endDate) {
         days.push(new Date(day));
-        day.setDate(day.getDate() + 1);
+        day.setUTCDate(day.getUTCDate() + 1);
     }
     const completionsMap = new Map(completions.map(c => [c.date, c.value || 1]));
-    const firstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-
-    const months = Array.from({ length: 12 }, (_, i) => ({
-        name: new Date(year, i).toLocaleString('default', { month: 'short' }),
-        days: days.filter(d => d.getMonth() === i),
-        padding: firstDayOfMonth(new Date(year, i, 1))
-    }));
+    
+    const months = Array.from({ length: 12 }, (_, i) => {
+        const monthDate = new Date(Date.UTC(year, i));
+        return {
+            name: monthDate.toLocaleString('default', { month: 'short', timeZone: 'UTC' }),
+            days: days.filter(d => d.getUTCMonth() === i),
+            padding: new Date(Date.UTC(year, i, 1)).getUTCDay()
+        };
+    });
 
     return (
         <div className="space-y-4">
@@ -141,9 +143,9 @@ const HabitDetail: FC<{ habit: Habit, onBack: () => void, onDelete: (id: string)
         const today = new Date();
         let count = 0;
         // Count possible days from the start of the year until today
-        const startOfYear = new Date(today.getFullYear(), 0, 1);
-        for (let d = startOfYear; d <= today; d.setDate(d.getDate() + 1)) {
-            if (isDueOn(habit, d)) count++;
+        const startOfYear = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
+        for (let d = startOfYear; d <= today; d.setUTCDate(d.getUTCDate() + 1)) {
+            if (isDueOn(habit, new Date(d))) count++;
         }
         return count;
     }, [habit]);

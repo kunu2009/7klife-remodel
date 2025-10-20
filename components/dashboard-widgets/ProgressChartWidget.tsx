@@ -1,5 +1,4 @@
 import React from 'react';
-// FIX: Import habit helper functions
 import { useHabits, useProjects, useJournal, getToday, getCompletion, isHabitCompleted, isDueOn } from '../../hooks/useDataHooks';
 import { LogoIcon } from '../icons';
 
@@ -48,7 +47,6 @@ const MultiLayerProgressChart: React.FC = () => {
     const size = 220;
     const strokeWidth = 18;
 
-    // FIX: Correctly calculate habit progress for today.
     const today = new Date();
     const todayStr = getToday(today);
     const habitsForToday = habits.filter(h => !h.archived && isDueOn(h, today));
@@ -98,7 +96,6 @@ const ProgressChartWidget: React.FC = () => {
     );
   }
 
-  // FIX: Correctly calculate completed habits for today.
   const today = new Date();
   const todayStr = getToday(today);
   const habitsForToday = habits.filter(h => !h.archived && isDueOn(h, today));
@@ -112,7 +109,6 @@ const ProgressChartWidget: React.FC = () => {
         <div className="w-full grid grid-cols-3 gap-4 mt-6 text-center">
             <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Habits</p>
-                {/* FIX: Show progress against habits due today. */}
                 <p className="font-bold text-lg text-purple-600 dark:text-purple-400">{habitsCompleted}/{habitsForToday.length}</p>
             </div>
             <div>

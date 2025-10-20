@@ -4,12 +4,13 @@ import { useEffect } from 'react';
 
 // --- Date Helpers ---
 export const getToday = (date: Date = new Date()): string => {
-    return date.toISOString().split('T')[0]; // YYYY-MM-DD
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
 };
 
 // --- Habit Hook Helpers ---
 export const isDueOn = (habit: Habit, date: Date): boolean => {
-    return habit.schedule.includes(date.getDay());
+    // Use getUTCDay() for consistency with stored UTC dates
+    return habit.schedule.includes(date.getUTCDay());
 };
 
 export const getCompletion = (habit: Habit, date: string): HabitCompletion | undefined => {
@@ -24,41 +25,29 @@ export const isHabitCompleted = (habit: Habit, completion?: HabitCompletion): bo
 
 export const calculateCurrentStreak = (habit: Habit): number => {
     let streak = 0;
-    const today = new Date();
     const completionsByDate = new Map(habit.completions.map(c => [c.date, c]));
-
-    // Check if completed today if it was due
-    const todayStr = getToday(today);
-    if (isDueOn(habit, today)) {
-        const todayCompletion = completionsByDate.get(todayStr);
-        if (todayCompletion && isHabitCompleted(habit, todayCompletion)) {
-            streak++;
-        } else {
-            // Not completed today, streak must be calculated from yesterday
-            today.setDate(today.getDate() - 1);
-        }
-    } else {
-        // Not due today, start check from yesterday
-        today.setDate(today.getDate() - 1);
-    }
     
-    // Go backwards from yesterday
-    for (let d = today; ; d.setDate(d.getDate() - 1)) {
-        if (isDueOn(habit, d)) {
-            const dateStr = getToday(d);
+    const today = new Date();
+    let checkDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+
+    for (let i = 0; i < 365 * 10; i++) { // Safety break after 10 years
+        if (isDueOn(habit, checkDate)) {
+            const dateStr = getToday(checkDate);
             const completion = completionsByDate.get(dateStr);
             if (completion && isHabitCompleted(habit, completion)) {
                 streak++;
             } else {
-                break; // Streak broken
+                // Streak is broken if a due day is not completed.
+                break;
             }
         }
-        // If it's not a due day, we just skip it and the streak continues.
-        if (streak > 365 * 5) break; // Safety break for perf
+        // If not a due day, the streak continues.
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
     }
     
     return streak;
 };
+
 
 export const calculateLongestStreak = (habit: Habit): number => {
     if (habit.completions.length === 0) return 0;
@@ -69,12 +58,15 @@ export const calculateLongestStreak = (habit: Habit): number => {
     const sortedCompletions = [...habit.completions].sort((a,b) => a.date.localeCompare(b.date));
     const completionsByDate = new Map(sortedCompletions.map(c => [c.date, c]));
 
-    const firstDate = new Date(sortedCompletions[0].date);
-    const lastDate = new Date(sortedCompletions[sortedCompletions.length - 1].date);
+    const firstDate = new Date(sortedCompletions[0].date + 'T00:00:00Z');
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
     
-    for (let d = firstDate; d <= lastDate; d.setDate(d.getDate() + 1)) {
-        if (isDueOn(habit, d)) {
-            const dateStr = getToday(d);
+    let currentDate = new Date(firstDate);
+
+    while (currentDate <= today) {
+        if (isDueOn(habit, currentDate)) {
+            const dateStr = getToday(currentDate);
             const completion = completionsByDate.get(dateStr);
             if (completion && isHabitCompleted(habit, completion)) {
                 currentStreak++;
@@ -83,6 +75,7 @@ export const calculateLongestStreak = (habit: Habit): number => {
                 currentStreak = 0;
             }
         }
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     }
     
     longestStreak = Math.max(longestStreak, currentStreak);
