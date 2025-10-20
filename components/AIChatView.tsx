@@ -5,7 +5,7 @@ import { useHabits } from '../hooks/useDataHooks';
 import { useProjects } from '../hooks/useDataHooks';
 import { LogoIcon, SparklesIcon } from './icons';
 
-// Define Chat type locally to avoid a top-level import that breaks the build
+// Define types locally to avoid top-level import that breaks the build
 type Chat = any;
 
 interface Message {
@@ -19,6 +19,7 @@ const AIChatView: React.FC = () => {
     const { habits } = useHabits();
     const { projects } = useProjects();
 
+    const [genAI, setGenAI] = useState<{ GoogleGenAI: new (args: { apiKey: string }) => any } | null>(null);
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -30,10 +31,26 @@ const AIChatView: React.FC = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const initializeChat = async (): Promise<Chat | null> => {
+    // Effect to dynamically load the library
+    useEffect(() => {
+        import('@google/genai')
+            .then(module => {
+                setGenAI(module);
+            })
+            .catch(e => {
+                console.error("Failed to load @google/genai module", e);
+                setError("Failed to load AI library.");
+            });
+    }, []);
+    
+    const initializeChat = () => {
         if (!apiKey) {
             setError("API Key is not set. Please add it in the 'More' tab under Settings.");
-            return null;
+            return;
+        }
+        if (!genAI) {
+            // Library isn't loaded yet, this will be called again by the effect
+            return;
         }
         setError(null);
         
@@ -52,9 +69,7 @@ const AIChatView: React.FC = () => {
         `;
         
         try {
-            // Dynamically import the module to prevent build errors
-            const { GoogleGenAI } = await import('@google/genai');
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = new genAI.GoogleGenAI({ apiKey });
             const newChat = ai.chats.create({
                 model: 'gemini-2.5-flash',
                 config: {
@@ -62,30 +77,27 @@ const AIChatView: React.FC = () => {
                 },
             });
             setChat(newChat);
-            return newChat;
         } catch (e) {
             console.error(e);
             setError("Failed to initialize the AI model. Please check your API key and try again.");
-            return null;
         }
     };
     
+    // Effect to initialize chat when API key and library are ready
     useEffect(() => {
-        if (apiKey) {
-            initializeChat();
-        }
+        initializeChat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [apiKey]);
+    }, [apiKey, genAI, journalEntries, habits, projects]);
 
 
     const sendMessage = async () => {
         if (!input.trim() || loading) return;
 
-        let currentChat = chat;
-        if (!currentChat) {
-            currentChat = await initializeChat();
+        if (!chat) {
+            setError("Chat is not ready. Please wait a moment.");
+            initializeChat(); // Attempt to re-initialize
+            return;
         }
-        if (!currentChat) return;
 
         const userMessage: Message = { role: 'user', text: input };
         setMessages(prev => [...prev, userMessage]);
@@ -93,7 +105,7 @@ const AIChatView: React.FC = () => {
         setLoading(true);
 
         try {
-            const result = await currentChat.sendMessage({ message: input });
+            const result = await chat.sendMessage({ message: input });
             const modelMessage: Message = { role: 'model', text: result.text };
             setMessages(prev => [...prev, modelMessage]);
         } catch (e) {
@@ -156,10 +168,10 @@ const AIChatView: React.FC = () => {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder="Ask about your data..."
-                            disabled={loading || !!error}
+                            disabled={loading || !!error || !genAI}
                             className="flex-grow w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         />
-                        <button onClick={sendMessage} disabled={loading || !input.trim()} className="bg-indigo-600 text-white p-2 rounded-full shadow hover:bg-indigo-700 transition-colors disabled:bg-indigo-300 disabled:cursor-not-allowed">
+                        <button onClick={sendMessage} disabled={loading || !input.trim() || !genAI} className="bg-indigo-600 text-white p-2 rounded-full shadow hover:bg-indigo-700 transition-colors disabled:bg-indigo-300 disabled:cursor-not-allowed">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                               <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
                             </svg>
