@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { PlusIcon, TrashIcon, Cog6ToothIcon, EllipsisVerticalIcon } from './icons';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { PlusIcon, TrashIcon, Cog6ToothIcon, EllipsisVerticalIcon, FilterIcon, CheckCircleIcon } from './icons';
 import { JournalEntry } from '../types';
 import { useJournal } from '../hooks/useDataHooks';
 import { useModal } from '../contexts/ModalContext';
@@ -158,6 +158,58 @@ const Journal: React.FC = () => {
     const { entries, addEntry, updateEntry, deleteEntry } = useJournal();
     const [selectedDate, setSelectedDate] = useState<number | null>(new Date().getDate());
     const { openModal, closeModal } = useModal();
+    const [moodFilters, setMoodFilters] = useState<string[]>([]);
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
+    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+    const filterMenuRef = useRef<HTMLDivElement>(null);
+    const moodOptions = ['😊', '😄', '🤔', '😢', '😠'];
+    const sortOptions: { key: 'newest' | 'oldest' | 'title'; label: string }[] = [
+        { key: 'newest', label: 'Newest First' },
+        { key: 'oldest', label: 'Oldest First' },
+        { key: 'title', label: 'Title (A-Z)' },
+    ];
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
+                setIsFilterMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [filterMenuRef]);
+    
+    const filteredAndSortedEntries = useMemo(() => {
+        let processedEntries = [...entries];
+        if (moodFilters.length > 0) {
+            processedEntries = processedEntries.filter(entry => moodFilters.includes(entry.mood));
+        }
+        switch (sortBy) {
+            case 'oldest':
+                processedEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                break;
+            case 'title':
+                processedEntries.sort((a, b) => a.title.localeCompare(b.title));
+                break;
+            case 'newest':
+            default:
+                // Already sorted by newest by default from the hook
+                break;
+        }
+        return processedEntries;
+    }, [entries, moodFilters, sortBy]);
+
+    const handleToggleMoodFilter = (mood: string) => {
+        setMoodFilters(prev => 
+            prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
+        );
+    };
+
+    const handleClearFilters = () => {
+        setMoodFilters([]);
+        setSortBy('newest');
+        setIsFilterMenuOpen(false);
+    };
 
     const handleSaveEntry = (entryData: Partial<JournalEntry>) => {
         if (entryData.id) {
@@ -199,17 +251,91 @@ const Journal: React.FC = () => {
             </div>
             <Calendar entries={entries} onDateClick={setSelectedDate} />
             <div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-3">Latest Entries</h2>
+                 <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Latest Entries</h2>
+                    <div className="relative" ref={filterMenuRef}>
+                        <button 
+                            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+                            className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
+                            aria-label="Filter and sort entries"
+                            aria-haspopup="true"
+                            aria-expanded={isFilterMenuOpen}
+                        >
+                            <FilterIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                            {moodFilters.length > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold">
+                                    {moodFilters.length}
+                                </span>
+                            )}
+                        </button>
+                        {isFilterMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 z-20 animate-fade-in-sm p-4 space-y-4">
+                                <div>
+                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-neutral-200">Sort By</h4>
+                                    <div className="space-y-1">
+                                        {sortOptions.map(option => (
+                                            <button
+                                                key={option.key}
+                                                onClick={() => setSortBy(option.key)}
+                                                className={`w-full text-left flex justify-between items-center px-3 py-1.5 text-sm rounded-md ${
+                                                    sortBy === option.key 
+                                                    ? 'bg-indigo-50 dark:bg-indigo-900/50 font-semibold text-indigo-700 dark:text-indigo-300' 
+                                                    : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
+                                                }`}
+                                            >
+                                                {option.label}
+                                                {sortBy === option.key && <CheckCircleIcon className="w-5 h-5" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="border-t border-gray-200 dark:border-neutral-700"></div>
+                                <div>
+                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-neutral-200">Filter by Mood</h4>
+                                    <div className="flex justify-around">
+                                         {moodOptions.map(mood => (
+                                            <button
+                                                key={mood}
+                                                onClick={() => handleToggleMoodFilter(mood)}
+                                                className={`text-2xl p-2 rounded-full transition-transform transform hover:scale-110 ${
+                                                    moodFilters.includes(mood) 
+                                                    ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500' 
+                                                    : 'bg-gray-100 dark:bg-neutral-700'
+                                                }`}
+                                            >
+                                                {mood}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {(moodFilters.length > 0 || sortBy !== 'newest') && (
+                                    <>
+                                        <div className="border-t border-gray-200 dark:border-neutral-700"></div>
+                                        <button onClick={handleClearFilters} className="w-full text-center text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            Clear Filters & Sort
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
                 <div className="space-y-3">
                     {entries.length > 0 ? (
-                        entries.map(entry => (
-                            <JournalEntryCard 
-                                key={entry.id}
-                                entry={entry}
-                                onEdit={handleOpenEditModal}
-                                onDelete={handleDelete}
-                            />
-                        ))
+                        filteredAndSortedEntries.length > 0 ? (
+                            filteredAndSortedEntries.map(entry => (
+                                <JournalEntryCard 
+                                    key={entry.id}
+                                    entry={entry}
+                                    onEdit={handleOpenEditModal}
+                                    onDelete={handleDelete}
+                                />
+                            ))
+                        ) : (
+                            <div className="text-center py-12">
+                                <p className="text-gray-500 dark:text-gray-400">No entries match your filters.</p>
+                            </div>
+                        )
                     ) : (
                         <div className="text-center py-12">
                             <p className="text-gray-500 dark:text-gray-400">No journal entries yet.</p>
