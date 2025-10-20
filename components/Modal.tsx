@@ -28,7 +28,7 @@ const Modal: React.FC = () => {
       onClick={closeModal}
     >
       <div
-        className="relative bg-white dark:bg-neutral-800 rounded-2xl shadow-xl w-full max-w-sm m-4 p-6 transform transition-transform duration-300 scale-100"
+        className="relative bg-white dark:bg-neutral-800 text-gray-900 dark:text-neutral-100 rounded-2xl shadow-xl w-full max-w-sm m-4 p-6 transform transition-transform duration-300 scale-100"
         onClick={(e) => e.stopPropagation()}
       >
         <button
