@@ -52,9 +52,7 @@ const AIChatView: React.FC = () => {
         `;
         
         try {
-            // Use a temporary API key for initialization, but the actual key is passed in the request.
-            // This is a workaround for the SDK's design. The actual key from context will be used in \`sendMessage\`.
-            const ai = new GoogleGenAI({ apiKey: "temp-will-be-overridden" });
+            const ai = new GoogleGenAI({ apiKey });
             const newChat = ai.chats.create({
                 model: 'gemini-2.5-flash',
                 config: {
@@ -74,7 +72,9 @@ const AIChatView: React.FC = () => {
         if (apiKey) {
             initializeChat();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+    // We only re-initialize if the API key changes or the component mounts.
+    // The component remounts when the user switches views, capturing the latest data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [apiKey]);
 
 
@@ -90,10 +90,7 @@ const AIChatView: React.FC = () => {
         setLoading(true);
 
         try {
-            // Set the API key on the environment for the SDK call
-            process.env.API_KEY = apiKey;
             const result = await currentChat.sendMessage({ message: input });
-            
             const modelMessage: Message = { role: 'model', text: result.text };
             setMessages(prev => [...prev, modelMessage]);
         } catch (e) {
@@ -102,8 +99,6 @@ const AIChatView: React.FC = () => {
             setMessages(prev => [...prev, errorMessage]);
         } finally {
             setLoading(false);
-            // Unset the key after use
-            delete process.env.API_KEY;
         }
     };
 
