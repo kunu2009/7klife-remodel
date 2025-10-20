@@ -20,13 +20,20 @@ export interface Habit {
 }
 
 
-export interface JournalEntry {
+export interface LogItem {
   id: string;
-  date: string; // Storing as ISO string
-  title: string;
+  timestamp: string; // Full ISO string for precise time
   content: string;
-  mood: string;
 }
+
+export interface JournalEntry {
+  id: string; // YYYY-MM-DD date string
+  date: string; // YYYY-MM-DD date string
+  title: string;
+  mood: string;
+  logs: LogItem[];
+}
+
 
 export enum ProjectStatus {
   NotStarted = 'Not Started',

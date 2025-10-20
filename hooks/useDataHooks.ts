@@ -1,16 +1,19 @@
 import useLocalStorage from './useLocalStorage';
-import { Habit, HabitCompletion, JournalEntry, Project, ProjectStatus, ProjectTask } from '../types';
-import { useEffect } from 'react';
+import { Habit, HabitCompletion, JournalEntry, LogItem, Project, ProjectStatus, ProjectTask } from '../types';
 
 // --- Date Helpers ---
 export const getToday = (date: Date = new Date()): string => {
-    return date.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
+    // This function should return YYYY-MM-DD in the user's local timezone for consistency.
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 // --- Habit Hook Helpers ---
 export const isDueOn = (habit: Habit, date: Date): boolean => {
-    // Use getUTCDay() for consistency with stored UTC dates
-    return habit.schedule.includes(date.getUTCDay());
+    // Use getDay() to respect local timezone, matching getToday()
+    return habit.schedule.includes(date.getDay());
 };
 
 export const getCompletion = (habit: Habit, date: string): HabitCompletion | undefined => {
@@ -27,8 +30,9 @@ export const calculateCurrentStreak = (habit: Habit): number => {
     let streak = 0;
     const completionsByDate = new Map(habit.completions.map(c => [c.date, c]));
     
-    const today = new Date();
-    let checkDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    // Start from today, local time
+    let checkDate = new Date();
+    checkDate.setHours(12, 0, 0, 0); // Normalize time to avoid timezone edge cases
 
     for (let i = 0; i < 365 * 10; i++) { // Safety break after 10 years
         if (isDueOn(habit, checkDate)) {
@@ -42,7 +46,7 @@ export const calculateCurrentStreak = (habit: Habit): number => {
             }
         }
         // If not a due day, the streak continues.
-        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+        checkDate.setDate(checkDate.getDate() - 1);
     }
     
     return streak;
@@ -58,11 +62,12 @@ export const calculateLongestStreak = (habit: Habit): number => {
     const sortedCompletions = [...habit.completions].sort((a,b) => a.date.localeCompare(b.date));
     const completionsByDate = new Map(sortedCompletions.map(c => [c.date, c]));
 
-    const firstDate = new Date(sortedCompletions[0].date + 'T00:00:00Z');
+    const firstDate = new Date(sortedCompletions[0].date);
     const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
     
     let currentDate = new Date(firstDate);
+    currentDate.setHours(12, 0, 0, 0);
+    today.setHours(12, 0, 0, 0);
 
     while (currentDate <= today) {
         if (isDueOn(habit, currentDate)) {
@@ -75,7 +80,7 @@ export const calculateLongestStreak = (habit: Habit): number => {
                 currentStreak = 0;
             }
         }
-        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        currentDate.setDate(currentDate.getDate() + 1);
     }
     
     longestStreak = Math.max(longestStreak, currentStreak);
@@ -153,17 +158,40 @@ export function useHabits() {
 export function useJournal() {
     const [entries, setEntries] = useLocalStorage<JournalEntry[]>('journal_entries', []);
 
-    const addEntry = (newEntryData: Omit<JournalEntry, 'id'>) => {
-        const newEntry: JournalEntry = {
-            ...newEntryData,
-            id: crypto.randomUUID(),
-        };
-        setEntries(prev => [newEntry, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    const addLogItem = (content: string) => {
+        const todayStr = getToday();
+        setEntries(prev => {
+            const dayEntryIndex = prev.findIndex(e => e.id === todayStr);
+            const newLog: LogItem = {
+                id: crypto.randomUUID(),
+                timestamp: new Date().toISOString(),
+                content: content.trim()
+            };
+
+            if (dayEntryIndex > -1) {
+                // Day exists, add log to it
+                const newEntries = [...prev];
+                const dayEntry = { ...newEntries[dayEntryIndex] };
+                dayEntry.logs = [...dayEntry.logs, newLog];
+                newEntries[dayEntryIndex] = dayEntry;
+                return newEntries;
+            } else {
+                // New day, create new entry
+                const newEntry: JournalEntry = {
+                    id: todayStr,
+                    date: todayStr,
+                    title: '',
+                    mood: '😊',
+                    logs: [newLog]
+                };
+                return [newEntry, ...prev].sort((a, b) => b.date.localeCompare(a.date));
+            }
+        });
     };
 
     const updateEntry = (updatedEntry: JournalEntry) => {
         setEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .sort((a, b) => b.date.localeCompare(a.date))
         );
     };
 
@@ -171,8 +199,9 @@ export function useJournal() {
         setEntries(prev => prev.filter(e => e.id !== entryId));
     };
 
-    return { entries, addEntry, updateEntry, deleteEntry };
+    return { entries, addLogItem, updateEntry, deleteEntry };
 }
+
 
 // --- Projects Hook ---
 export function useProjects() {

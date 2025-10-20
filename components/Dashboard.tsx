@@ -5,10 +5,12 @@ import { PencilIcon, CheckIcon, DragHandleIcon, LogoIcon } from './icons';
 import ProgressChartWidget from './dashboard-widgets/ProgressChartWidget';
 import QuoteWidget from './dashboard-widgets/QuickActionsWidget';
 import { TodaysHabitsWidget, JournalPromptWidget, FocusTasksWidget, SubscriptionsWidget, GoalsWidget } from './dashboard-widgets/AdditionalWidgets';
+import DailyLogWidget from './dashboard-widgets/DailyLogWidget';
 import ToggleSwitch from './ToggleSwitch';
 
 const WIDGET_CONFIG = {
   progress: { name: 'Overall Progress', component: ProgressChartWidget },
+  dailyLog: { name: 'Daily Log', component: DailyLogWidget },
   habitsToday: { name: "Today's Habits", component: TodaysHabitsWidget },
   focusTasks: { name: 'Focus Tasks', component: FocusTasksWidget },
   journalPrompt: { name: 'Journal Prompt', component: JournalPromptWidget },
@@ -26,6 +28,7 @@ interface WidgetState {
 
 const DEFAULT_LAYOUT: WidgetState[] = [
   { id: 'progress', enabled: true },
+  { id: 'dailyLog', enabled: true },
   { id: 'habitsToday', enabled: true },
   { id: 'focusTasks', enabled: true },
   { id: 'goals', enabled: true },
@@ -151,6 +154,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
             switch (widget.id) {
               case 'progress':
                 return <ProgressChartWidget />;
+              case 'dailyLog':
+                return <DailyLogWidget />;
               case 'quote':
                 return <QuoteWidget />;
               case 'habitsToday':

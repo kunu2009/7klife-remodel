@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Subscription, View } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useModal } from '../contexts/ModalContext';
-import { GoalIcon, InventoryIcon, PlusIcon, ArrowDownTrayIcon } from './icons';
+import { GoalIcon, InventoryIcon, PlusIcon, ArrowDownTrayIcon, KeyIcon, CheckCircleIcon } from './icons';
 import { usePWAInstall } from '../contexts/PWAInstallContext';
+import { useAPIKey } from '../contexts/APIKeyContext';
 
 const AddSubscriptionForm: React.FC<{ onAdd: (sub: Omit<Subscription, 'id'>) => void }> = ({ onAdd }) => {
     const [name, setName] = React.useState('');
@@ -43,6 +44,49 @@ const ThemeToggle: React.FC = () => {
     )
 }
 
+const APIKeyManager: React.FC = () => {
+    const { apiKey, setApiKey } = useAPIKey();
+    const [inputValue, setInputValue] = useState(apiKey);
+    const [saved, setSaved] = useState(false);
+
+    const handleSave = () => {
+        setApiKey(inputValue);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+    };
+
+    useEffect(() => {
+        setInputValue(apiKey);
+    }, [apiKey]);
+
+    return (
+         <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm space-y-3">
+            <div className="flex items-center space-x-3 text-gray-800 dark:text-neutral-100">
+                <KeyIcon className="w-5 h-5"/>
+                <p className="font-semibold">API Key</p>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+                A Gemini API key is required for the AI Journal Assistant. Your key is stored only on this device.
+            </p>
+            <div className="flex items-center space-x-2">
+                <input 
+                    type="password"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Enter your Gemini API key"
+                    className="flex-grow w-full px-3 py-2 bg-gray-100 dark:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded-md text-sm"
+                />
+                 <button 
+                    onClick={handleSave}
+                    className={`flex items-center space-x-2 text-white py-2 px-4 rounded-md transition-colors text-sm font-semibold ${saved ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                >
+                    {saved ? <CheckCircleIcon className="w-5 h-5"/> : <span>Save</span>}
+                </button>
+            </div>
+        </div>
+    );
+}
+
 interface MoreProps {
   setActiveView: (view: View) => void;
 }
@@ -78,6 +122,7 @@ const More: React.FC<MoreProps> = ({ setActiveView }) => {
         <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-3">Settings</h2>
         <div className="space-y-4">
             <ThemeToggle />
+            <APIKeyManager />
             {installPromptEvent && (
                 <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm flex justify-between items-center">
                     <p className="font-semibold">Install App</p>

@@ -1,152 +1,45 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { PlusIcon, TrashIcon, Cog6ToothIcon, EllipsisVerticalIcon, FilterIcon, CheckCircleIcon } from './icons';
+import React, { useState, useMemo } from 'react';
+import { SparklesIcon, TrashIcon } from './icons';
 import { JournalEntry } from '../types';
 import { useJournal } from '../hooks/useDataHooks';
 import { useModal } from '../contexts/ModalContext';
+import AIChatView from './AIChatView';
 
-const JournalEntryForm: React.FC<{
-    onSave: (entry: Partial<JournalEntry>) => void;
-    onDelete?: (id: string) => void;
-    entryToEdit?: JournalEntry | null;
-}> = ({ onSave, onDelete, entryToEdit }) => {
-    const [title, setTitle] = useState(entryToEdit?.title || '');
-    const [content, setContent] = useState(entryToEdit?.content || '');
-    const [mood, setMood] = useState(entryToEdit?.mood || '😊');
-    const moodOptions = ['😊', '😄', '🤔', '😢', '😠'];
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const entryData: Partial<JournalEntry> = {
-            date: entryToEdit?.date || new Date().toISOString(),
-            title,
-            content,
-            mood,
-        };
-        if (entryToEdit) {
-            entryData.id = entryToEdit.id;
-        }
-        onSave(entryData);
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">{entryToEdit ? 'Edit Entry' : 'New Entry'}</h2>
-            <div>
-                <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="w-full px-3 py-2 bg-transparent text-lg font-semibold focus:outline-none" required />
-            </div>
-            <div>
-                <textarea placeholder="Write something..." value={content} onChange={e => setContent(e.target.value)} className="w-full h-32 px-3 py-2 bg-transparent focus:outline-none" required />
-            </div>
-            <div className="flex justify-between items-center">
-                 <div className="flex items-center space-x-2" role="group" aria-label="Mood selection">
-                    {moodOptions.map((option) => (
-                        <button
-                            key={option}
-                            type="button"
-                            onClick={() => setMood(option)}
-                            aria-label={`Select mood: ${option}`}
-                            className={`text-3xl p-2 rounded-full transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-800 ${
-                                mood === option 
-                                ? 'bg-indigo-100 dark:bg-indigo-900/50 scale-110 ring-2 ring-indigo-300 dark:ring-indigo-500' 
-                                : 'hover:bg-gray-100 dark:hover:bg-neutral-700 hover:scale-105 ring-2 ring-transparent'
-                            }`}
-                        >
-                            {option}
-                        </button>
-                    ))}
-                </div>
-                <div className="flex items-center space-x-2">
-                     {entryToEdit && onDelete && (
-                        <button type="button" onClick={() => onDelete(entryToEdit.id!)} className="text-red-600 dark:text-red-400 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50">
-                            <TrashIcon className="w-5 h-5"/>
-                        </button>
-                    )}
-                    <button type="submit" className="bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700 transition-colors">Save</button>
-                </div>
-            </div>
-        </form>
-    );
-}
-
-const Calendar: React.FC<{ entries: JournalEntry[], onDateClick: (date: number) => void }> = ({ entries, onDateClick }) => {
-    const today = new Date();
-    const currentMonth = today.toLocaleString('default', { month: 'long' });
-    const currentYear = today.getFullYear();
-    const daysInMonth = new Date(currentYear, today.getMonth() + 1, 0).getDate();
-    const entryDays = new Set(entries.map(e => new Date(e.date).getDate()));
-    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-    return (
-        <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg">{currentMonth} {currentYear}</h3>
-                <div className="flex space-x-2">
-                    <button className="text-gray-400 hover:text-gray-600">&lt;</button>
-                    <button className="text-gray-400 hover:text-gray-600">&gt;</button>
-                </div>
-            </div>
-            <div className="grid grid-cols-7 gap-y-2 text-center">
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => <div key={d} className="text-xs font-bold text-gray-400">{d}</div>)}
-                {days.map(day => (
-                    <button 
-                        key={day} 
-                        onClick={() => onDateClick(day)}
-                        className={`w-9 h-9 flex items-center justify-center rounded-full text-sm transition-colors ${
-                            day === today.getDate() ? 'bg-indigo-600 text-white' : 
-                            entryDays.has(day) ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-neutral-700'
-                        }`}
-                    >
-                        {day}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const JournalEntryCard: React.FC<{
+const DailyLogCard: React.FC<{
     entry: JournalEntry;
-    onEdit: (entry: JournalEntry) => void;
     onDelete: (id: string) => void;
-}> = ({ entry, onEdit, onDelete }) => {
-    const [menuOpen, setMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
+}> = ({ entry, onDelete }) => {
     const entryDate = new Date(entry.date);
+    const day = entryDate.getUTCDate();
+    const month = entryDate.toLocaleString('default', { month: 'short', timeZone: 'UTC' });
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setMenuOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [menuRef]);
+    const formatTime = (timestamp: string) => {
+        return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
 
     return (
         <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm flex items-start space-x-4">
-            <div className="text-center">
-                <div className="font-bold text-indigo-600 dark:text-indigo-400 text-xl">{entryDate.getDate()}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">{entryDate.toLocaleString('default', { month: 'short' })}</div>
+            <div className="text-center flex-shrink-0">
+                <div className="font-bold text-indigo-600 dark:text-indigo-400 text-xl">{day}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">{month}</div>
             </div>
             <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 dark:text-neutral-100 break-words">{entry.title}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 break-words line-clamp-2">{entry.content}</p>
-            </div>
-            <div className="flex items-center space-x-2">
-                <div className="text-xl">{entry.mood}</div>
-                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300 p-1 rounded-full">
-                        <EllipsisVerticalIcon className="w-5 h-5"/>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="font-semibold text-gray-800 dark:text-neutral-100 break-words">{entry.title || "Daily Log"}</p>
+                        <div className="text-xl mt-1">{entry.mood}</div>
+                    </div>
+                    <button onClick={() => onDelete(entry.id)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1 rounded-full">
+                        <TrashIcon className="w-4 h-4" />
                     </button>
-                    {menuOpen && (
-                        <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-neutral-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10 animate-fade-in-sm">
-                            <div className="py-1">
-                                <button onClick={() => { onEdit(entry); setMenuOpen(false); }} className="w-full text-left flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700"><Cog6ToothIcon className="w-5 h-5"/><span>Edit</span></button>
-                                <button onClick={() => { onDelete(entry.id); setMenuOpen(false); }} className="w-full text-left flex items-center space-x-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50"><TrashIcon className="w-5 h-5"/><span>Delete</span></button>
-                            </div>
+                </div>
+                <div className="mt-3 space-y-3 border-t border-gray-100 dark:border-neutral-700 pt-3">
+                    {entry.logs.map(log => (
+                        <div key={log.id} className="flex items-start space-x-3">
+                            <p className="text-xs text-gray-400 dark:text-neutral-500 font-mono flex-shrink-0">{formatTime(log.timestamp)}</p>
+                            <p className="text-sm text-gray-600 dark:text-neutral-300">{log.content}</p>
                         </div>
-                    )}
+                    ))}
                 </div>
             </div>
         </div>
@@ -155,76 +48,19 @@ const JournalEntryCard: React.FC<{
 
 
 const Journal: React.FC = () => {
-    const { entries, addEntry, updateEntry, deleteEntry } = useJournal();
-    const [selectedDate, setSelectedDate] = useState<number | null>(new Date().getDate());
+    const { entries, deleteEntry } = useJournal();
     const { openModal, closeModal } = useModal();
-    const [moodFilters, setMoodFilters] = useState<string[]>([]);
-    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
-    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-    const filterMenuRef = useRef<HTMLDivElement>(null);
-    const moodOptions = ['😊', '😄', '🤔', '😢', '😠'];
-    const sortOptions: { key: 'newest' | 'oldest' | 'title'; label: string }[] = [
-        { key: 'newest', label: 'Newest First' },
-        { key: 'oldest', label: 'Oldest First' },
-        { key: 'title', label: 'Title (A-Z)' },
-    ];
+    const [view, setView] = useState<'logs' | 'ai'>('logs');
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
-                setIsFilterMenuOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [filterMenuRef]);
-    
-    const filteredAndSortedEntries = useMemo(() => {
-        let processedEntries = [...entries];
-        if (moodFilters.length > 0) {
-            processedEntries = processedEntries.filter(entry => moodFilters.includes(entry.mood));
-        }
-        switch (sortBy) {
-            case 'oldest':
-                processedEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                break;
-            case 'title':
-                processedEntries.sort((a, b) => a.title.localeCompare(b.title));
-                break;
-            case 'newest':
-            default:
-                // Already sorted by newest by default from the hook
-                break;
-        }
-        return processedEntries;
-    }, [entries, moodFilters, sortBy]);
-
-    const handleToggleMoodFilter = (mood: string) => {
-        setMoodFilters(prev => 
-            prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
-        );
-    };
-
-    const handleClearFilters = () => {
-        setMoodFilters([]);
-        setSortBy('newest');
-        setIsFilterMenuOpen(false);
-    };
-
-    const handleSaveEntry = (entryData: Partial<JournalEntry>) => {
-        if (entryData.id) {
-            updateEntry(entryData as JournalEntry);
-        } else {
-            addEntry(entryData as Omit<JournalEntry, 'id'>);
-        }
-        closeModal();
-    };
+    const sortedEntries = useMemo(() => {
+        return [...entries].sort((a, b) => b.date.localeCompare(a.date));
+    }, [entries]);
 
     const handleDelete = (id: string) => {
         openModal(
             <div className="space-y-4 text-center p-2">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Delete Entry?</h2>
-                <p className="text-gray-600 dark:text-neutral-300">Are you sure you want to delete this journal entry? This action cannot be undone.</p>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Delete Day's Log?</h2>
+                <p className="text-gray-600 dark:text-neutral-300">Are you sure you want to delete all logs for this day? This action cannot be undone.</p>
                 <div className="flex justify-center space-x-4 pt-2">
                     <button onClick={closeModal} className="px-6 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-neutral-700 dark:text-gray-200 border border-gray-300 dark:border-neutral-600 rounded-md hover:bg-gray-50 dark:hover:bg-neutral-600">Cancel</button>
                     <button onClick={() => { deleteEntry(id); closeModal(); }} className="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Delete</button>
@@ -233,116 +69,39 @@ const Journal: React.FC = () => {
         );
     }
     
-    const handleOpenEditModal = (entry: JournalEntry) => {
-        openModal(<JournalEntryForm onSave={handleSaveEntry} onDelete={handleDelete} entryToEdit={entry} />);
-    };
-    
-    const handleOpenAddModal = () => {
-        openModal(<JournalEntryForm onSave={handleSaveEntry} />);
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-neutral-100">Journal</h1>
-                 <button onClick={handleOpenAddModal} className="bg-indigo-600 text-white p-2 rounded-full shadow hover:bg-indigo-700 transition-colors">
-                    <PlusIcon className="w-6 h-6" />
+                 <button 
+                    onClick={() => setView(v => v === 'logs' ? 'ai' : 'logs')} 
+                    className="bg-indigo-600 text-white p-2 rounded-full shadow hover:bg-indigo-700 transition-colors flex items-center space-x-2 px-4"
+                >
+                    <SparklesIcon className="w-6 h-6" />
+                    <span className="font-semibold text-sm">{view === 'logs' ? 'Ask AI' : 'View Logs'}</span>
                 </button>
             </div>
-            <Calendar entries={entries} onDateClick={setSelectedDate} />
-            <div>
-                 <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100">Latest Entries</h2>
-                    <div className="relative" ref={filterMenuRef}>
-                        <button 
-                            onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-                            className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors"
-                            aria-label="Filter and sort entries"
-                            aria-haspopup="true"
-                            aria-expanded={isFilterMenuOpen}
-                        >
-                            <FilterIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                            {moodFilters.length > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold">
-                                    {moodFilters.length}
-                                </span>
-                            )}
-                        </button>
-                        {isFilterMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 z-20 animate-fade-in-sm p-4 space-y-4">
-                                <div>
-                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-neutral-200">Sort By</h4>
-                                    <div className="space-y-1">
-                                        {sortOptions.map(option => (
-                                            <button
-                                                key={option.key}
-                                                onClick={() => setSortBy(option.key)}
-                                                className={`w-full text-left flex justify-between items-center px-3 py-1.5 text-sm rounded-md ${
-                                                    sortBy === option.key 
-                                                    ? 'bg-indigo-50 dark:bg-indigo-900/50 font-semibold text-indigo-700 dark:text-indigo-300' 
-                                                    : 'text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700'
-                                                }`}
-                                            >
-                                                {option.label}
-                                                {sortBy === option.key && <CheckCircleIcon className="w-5 h-5" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="border-t border-gray-200 dark:border-neutral-700"></div>
-                                <div>
-                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-neutral-200">Filter by Mood</h4>
-                                    <div className="flex justify-around">
-                                         {moodOptions.map(mood => (
-                                            <button
-                                                key={mood}
-                                                onClick={() => handleToggleMoodFilter(mood)}
-                                                className={`text-2xl p-2 rounded-full transition-transform transform hover:scale-110 ${
-                                                    moodFilters.includes(mood) 
-                                                    ? 'bg-indigo-100 dark:bg-indigo-900/50 ring-2 ring-indigo-500' 
-                                                    : 'bg-gray-100 dark:bg-neutral-700'
-                                                }`}
-                                            >
-                                                {mood}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                {(moodFilters.length > 0 || sortBy !== 'newest') && (
-                                    <>
-                                        <div className="border-t border-gray-200 dark:border-neutral-700"></div>
-                                        <button onClick={handleClearFilters} className="w-full text-center text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
-                                            Clear Filters & Sort
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-                <div className="space-y-3">
-                    {entries.length > 0 ? (
-                        filteredAndSortedEntries.length > 0 ? (
-                            filteredAndSortedEntries.map(entry => (
-                                <JournalEntryCard 
-                                    key={entry.id}
-                                    entry={entry}
-                                    onEdit={handleOpenEditModal}
-                                    onDelete={handleDelete}
-                                />
-                            ))
-                        ) : (
-                            <div className="text-center py-12">
-                                <p className="text-gray-500 dark:text-gray-400">No entries match your filters.</p>
-                            </div>
-                        )
+            
+            {view === 'ai' ? (
+                <AIChatView />
+            ) : (
+                <div className="space-y-4">
+                    {sortedEntries.length > 0 ? (
+                        sortedEntries.map(entry => (
+                            <DailyLogCard 
+                                key={entry.id}
+                                entry={entry}
+                                onDelete={handleDelete}
+                            />
+                        ))
                     ) : (
-                        <div className="text-center py-12">
+                        <div className="text-center py-20">
                             <p className="text-gray-500 dark:text-gray-400">No journal entries yet.</p>
+                             <p className="text-gray-500 dark:text-gray-400 mt-2">Use the "Daily Log" on the dashboard to get started!</p>
                         </div>
                     )}
                 </div>
-            </div>
+            )}
         </div>
     );
 };

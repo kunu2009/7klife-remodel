@@ -4,6 +4,7 @@ import App from './App';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ModalProvider } from './contexts/ModalContext';
 import { PWAInstallProvider } from './contexts/PWAInstallContext';
+import { APIKeyProvider } from './contexts/APIKeyContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -16,7 +17,9 @@ root.render(
     <ThemeProvider>
       <ModalProvider>
         <PWAInstallProvider>
-          <App />
+          <APIKeyProvider>
+            <App />
+          </APIKeyProvider>
         </PWAInstallProvider>
       </ModalProvider>
     </ThemeProvider>
