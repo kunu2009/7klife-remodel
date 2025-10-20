@@ -3,7 +3,8 @@ import { Subscription, View } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useModal } from '../contexts/ModalContext';
-import { GoalIcon, InventoryIcon, PlusIcon } from './icons';
+import { GoalIcon, InventoryIcon, PlusIcon, ArrowDownTrayIcon } from './icons';
+import { usePWAInstall } from '../contexts/PWAInstallContext';
 
 const AddSubscriptionForm: React.FC<{ onAdd: (sub: Omit<Subscription, 'id'>) => void }> = ({ onAdd }) => {
     const [name, setName] = React.useState('');
@@ -49,6 +50,7 @@ interface MoreProps {
 const More: React.FC<MoreProps> = ({ setActiveView }) => {
     const [subscriptions, setSubscriptions] = useLocalStorage<Subscription[]>('subscriptions', []);
     const { openModal, closeModal } = useModal();
+    const { installPromptEvent, triggerInstallPrompt } = usePWAInstall();
     const totalMonthly = subscriptions.reduce((acc, sub) => sub.billingCycle === 'monthly' ? acc + sub.amount : acc, 0);
 
     const handleAddSubscription = (newSubData: Omit<Subscription, 'id'>) => {
@@ -74,7 +76,21 @@ const More: React.FC<MoreProps> = ({ setActiveView }) => {
       
       <div>
         <h2 className="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-3">Settings</h2>
-        <ThemeToggle />
+        <div className="space-y-4">
+            <ThemeToggle />
+            {installPromptEvent && (
+                <div className="bg-white dark:bg-neutral-800 p-4 rounded-xl shadow-sm flex justify-between items-center">
+                    <p className="font-semibold">Install App</p>
+                    <button 
+                        onClick={triggerInstallPrompt}
+                        className="flex items-center space-x-2 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                    >
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Install</span>
+                    </button>
+                </div>
+            )}
+        </div>
       </div>
 
       <div>

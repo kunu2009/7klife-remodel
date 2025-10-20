@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ModalProvider } from './contexts/ModalContext';
+import { PWAInstallProvider } from './contexts/PWAInstallContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,7 +15,9 @@ root.render(
   <React.StrictMode>
     <ThemeProvider>
       <ModalProvider>
-        <App />
+        <PWAInstallProvider>
+          <App />
+        </PWAInstallProvider>
       </ModalProvider>
     </ThemeProvider>
   </React.StrictMode>
